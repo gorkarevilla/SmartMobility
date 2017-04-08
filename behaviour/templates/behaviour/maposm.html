@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% load staticfiles %}
+{% load static %}
+
+{% block content %}
+
+<!-- LEAFLET HOSTED VERSION-->
+<link rel="stylesheet" href="{%  static 'leaflet/leaflet.css' %}" />
+<script src="{%  static 'leaflet/leaflet.js' %}"></script>
+<script type="text/javascript" src="{%  static 'leaflet/leafletembed.js' %}"></script>
+<!-- END LEAFLET-->
+
+
+<div class="container">
+	<!-- Example row of columns -->
+  	<div class="row">
+    	<div class="col-md-2">
+      		<h2>Menu</h2>
+      		<p>Here is the menu</p>
+    	</div>
+    <div class="col-md-16">
+    	<h2>Map</h2>
+       		<div id="map"></div>
+        	<script>
+        		initmap();
+        		drawPoint();
+        		drawTrips();
+        	</script>
+    </div>
+</div>
+
+{% endblock %}

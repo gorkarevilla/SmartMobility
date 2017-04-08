@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- Main jumbotron for a primary marketing message or call to action -->
+<div class="jumbotron">
+  <div class="container">
+    <h1>Welcome to Smart Mobility</h1>
+    <p>Smart Mobility will help you to understand the how can the drivers improve their driving behaviour and decrease the fuel comsuption.</p>
+    <p><a class="btn btn-primary btn-lg" href="maposm" role="button">View the Map &raquo;</a></p>
+  </div>
+</div>
+
+
+<div class="container">
+  <!-- Row of columns -->
+  <div class="row">
+    <div class="col-md-4">
+      <h2>Insert Data</h2>
+      <p>Here you can add info about your trips and check it on the map.</p>
+      <p><a class="btn btn-default" href="#" role="button">Insert your data &raquo;</a></p>
+    </div>
+    <div class="col-md-4">
+      <h2>Visualize</h2>
+      <p>Here you can see all the data that you have uploaded visualized in a map</p>
+      <p><a class="btn btn-default" href="maposm" role="button">Visualize the Map&raquo;</a></p>
+    </div>
+    <div class="col-md-4">
+      <h2>Knowledge</h2>
+      <p>Here you can see all the knowledge adquired by the system from your data</p>
+      <p><a class="btn btn-default" href="#" role="button">Get Knowledge &raquo;</a></p>
+    </div>
+  </div>
+
+  <hr>
+
+</div> <!-- /container -->        
+
+{% endblock %}
