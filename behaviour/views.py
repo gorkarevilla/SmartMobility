@@ -11,7 +11,7 @@ from .forms import UploadFileForm
 
 import csv
 from datetime import datetime
-from io import BytesIO
+from datetime import timedelta
 
 # Create your views here.
 @require_http_methods(["GET"])
@@ -27,7 +27,7 @@ def upload(request):
 		formupload = UploadFileForm(request.POST, request.FILES)
 		if formupload.is_valid():
 			spacer = " "
-			gaptime = 60
+			gaptime = 120
 			positions = clean_file(request.FILES['file'],spacer)
 			determine_trips(positions,gaptime)
 			messages.success(request,"File Uploaded Correctly")
@@ -51,8 +51,6 @@ def clean_file(file,spacer):
 
 	reader = csv.reader(file, delimiter=str(spacer))
 
-	cleanfile = BytesIO()
-	writter = csv.writer(cleanfile, delimiter=str(spacer))
 	counter = 0
 	#for line in file:
 	for line in reader:
@@ -62,9 +60,9 @@ def clean_file(file,spacer):
 			# 2017-02-02T19:18:36.063Z
 			timestamp = datetime.strptime(line[0], '%Y-%m-%dT%H:%M:%S.%fZ')
 			point.append(timestamp.strftime("%Y-%m-%d %H:%M:%S"))
-			point.append(line[1])
-			point.append(line[3])
-			point.append(line[4])
+			point.append(line[1]) # device_id
+			point.append(line[3]) # latitude
+			point.append(line[4]) # longitude
 
 			positions.append(point)
 
@@ -81,7 +79,64 @@ def clean_file(file,spacer):
 	return positions
 
 # Determine Trips
+# Delete the points and determine the trips by timestamp and device_id
 def determine_trips(positions,gaptime):
-	
+
+	#List of trips
+	trips = []
+
+	#Number of trips
+	tripNumber = 0
+
+	#Control if the point is the last point of a list of linked points
+	isLastPoint = 0
+	#NOTE: N^2! can be done with better performace
 	for pos in positions:
-		print pos
+		try:
+			thispos = pos
+			nextpos = positions[positions.index(pos)+1] 
+			#print "Pos: "+thispos[0] + " Next: " + nextpos[0]
+			
+
+			thisdate = datetime.strptime(thispos[0], '%Y-%m-%d %H:%M:%S')
+			nextdate = datetime.strptime(nextpos[0], '%Y-%m-%d %H:%M:%S')
+			# If the time is close, is part of a trip
+			if (nextdate-thisdate<timedelta(seconds=gaptime) or isLastPoint):
+
+
+				if(nextdate-thisdate<timedelta(seconds=gaptime)):
+					isLastPoint = 1
+				else:
+					isLastPoint = 0
+				#List of points for trip [tripNumber][timestamp][device_id][latitud][longitude]
+				point = []
+
+				point.append(tripNumber) # tripNumber
+				point.append(thispos[0]) # timestamp
+				point.append(thispos[1]) # device_id
+				point.append(thispos[2]) # latitude
+				point.append(thispos[3]) # longitude
+
+				trips.append(point)
+
+			else:
+				tripNumber+=1
+				isLastPoint=0
+
+		except IndexError:
+			continue
+
+	
+	for t in trips:
+		print t
+
+	return trips
+
+
+
+
+
+
+
+
+
