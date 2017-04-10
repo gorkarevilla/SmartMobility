@@ -3,14 +3,17 @@
 {% load staticfiles %}
 {% load static %}
 
-{% block content %}
+{% block links %}
 
-<!-- LEAFLET HOSTED VERSION-->
+<!-- LEAFLET -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.0.3/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.0.3/dist/leaflet.js"></script>
 <script type="text/javascript" src="{%  static 'leaflet/leafletembed.js' %}"></script>
 <!-- END LEAFLET-->
 
+{% endblock %}
+
+{% block content %}
 
 <div class="container">
 	<!-- Example row of columns -->

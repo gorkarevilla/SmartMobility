@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="container">
+
+    <div class="col-md-2">
+    	<h2>Options</h2>
+    	<p>Here is the menu</p>
+    </div>
+    <div class="col-md-16">
+    	<h2>Upload your file with GPS data</h2>
+    	<form enctype="multipart/form-data" action="./upload" method="post">
+    	<div class="form-group">
+    		{{formupload.file}}
+    		{% csrf_token %}
+    		
+    		<button class="btn btn-primary btn-lg fa fa-upload" type="submit"> Upload</button>
+    	</div>
+    	
+		</form>
+	</div>
+    
+</div>
+
+{% endblock %}
