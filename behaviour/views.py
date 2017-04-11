@@ -100,17 +100,12 @@ def determine_trips(positions,gaptime):
 
 			thisdate = datetime.strptime(thispos[0], '%Y-%m-%d %H:%M:%S')
 			nextdate = datetime.strptime(nextpos[0], '%Y-%m-%d %H:%M:%S')
+
 			# If the time is close, is part of a trip
-			if (nextdate-thisdate<timedelta(seconds=gaptime) or isLastPoint):
+			if (nextdate-thisdate<timedelta(seconds=gaptime)):
 
-
-				if(nextdate-thisdate<timedelta(seconds=gaptime)):
-					isLastPoint = 1
-				else:
-					isLastPoint = 0
 				#List of points for trip [tripNumber][timestamp][device_id][latitud][longitude]
 				point = []
-
 				point.append(tripNumber) # tripNumber
 				point.append(thispos[0]) # timestamp
 				point.append(thispos[1]) # device_id
@@ -119,16 +114,29 @@ def determine_trips(positions,gaptime):
 
 				trips.append(point)
 
+				isLastPoint=1
+
+				print point
+
 			else:
+
+				# Include the last point to the trip
+				if(isLastPoint):
+					#List of points for trip [tripNumber][timestamp][device_id][latitud][longitude]
+					point = []
+					point.append(tripNumber) # tripNumber
+					point.append(thispos[0]) # timestamp
+					point.append(thispos[1]) # device_id
+					point.append(thispos[2]) # latitude
+					point.append(thispos[3]) # longitude
+
+					trips.append(point)					
+
 				tripNumber+=1
 				isLastPoint=0
 
 		except IndexError:
 			continue
-
-	
-	for t in trips:
-		print t
 
 	return trips
 
