@@ -3,6 +3,12 @@
    ========================================================================== */
 
 /* LEAFLET */
-#map { 
+.leaflet-container {  /* all maps */
+    /* width:  600px;
+    height: 400px; */
+    height: 500px;
+}
+
+#mapjs { 
 	height: 100%; 
 }

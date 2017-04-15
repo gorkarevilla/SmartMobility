@@ -38,8 +38,17 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'behaviour',
-    'crispy_forms'
+    'crispy_forms',
+    'leaflet'
 ]
+
+LEAFLET_CONFIG = {
+    # conf here
+    'DEFAULT_CENTER': (20.0, 0.0),
+    'DEFAULT_ZOOM': 2,
+    'MIN_ZOOM': 1,
+    'MAX_ZOOM': 20,
+}
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
