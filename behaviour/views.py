@@ -29,9 +29,14 @@ def upload(request):
 			spacer = " "
 			gaptime = 120
 			positions = clean_file(request.FILES['file'],spacer)
-			determine_trips(positions,gaptime)
-			messages.success(request,"File Uploaded Correctly")
-			return HttpResponseRedirect('maposm.html')
+			trips = determine_trips(positions,gaptime)
+			if (request.user.is_authenticated):
+				insert_trips(trips)
+				messages.success(request,"File Saved Correctly")
+				return HttpResponseRedirect('maposm.html')
+			else :
+				messages.success(request,"File Processed Correctly")
+				return HttpResponseRedirect('maposm.html')
 		else:
 			messages.error(request,"Error Uploading the File")
 			return HttpResponseRedirect('upload.html')
@@ -122,7 +127,7 @@ def determine_trips(positions,gaptime):
 
 				# Include the last point to the trip
 				if(isLastPoint):
-					#List of points for trip [tripNumber][timestamp][device_id][latitud][longitude]
+					#List of points for trip [tripNumber][timestamp][device_id][latitude][longitude]
 					point = []
 					point.append(tripNumber) # tripNumber
 					point.append(thispos[0]) # timestamp
@@ -139,6 +144,14 @@ def determine_trips(positions,gaptime):
 			continue
 
 	return trips
+
+
+# Save the trips in the model
+# Trips is a list of trips: [tripNumber][timestamp][device_id][latitud][longitude]
+# In the model insert:
+# User ¿tripNumber? timestamp device_id latitude longitude
+def insert_trips(trips):
+	print "Saved"
 
 
 
