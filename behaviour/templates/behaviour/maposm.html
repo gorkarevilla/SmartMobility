@@ -9,8 +9,12 @@
 <!-- LEAFLET -->
     {% leaflet_js %}
     {% leaflet_css %}
-<!-- <script type="text/javascript" src="{%  static 'leaflet/leafletembed.js' %}"></script> -->
+<script type="text/javascript" src="{%  static 'leaflet/leafletembed.js' %}"></script>
 <!-- END LEAFLET-->
+
+<!-- JQUERY -->
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+<!-- END JQUERY -->
 
 {% endblock %}
 
@@ -26,7 +30,7 @@
     <div class="col-md-16">
     	<h2>Map</h2>
        		<div>
-            {% leaflet_map "map" %}
+            {% leaflet_map "map" callback="loadDDBB" %}
           </div>
     </div>
 </div>

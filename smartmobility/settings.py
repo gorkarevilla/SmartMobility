@@ -37,6 +37,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.gis',
+    'djgeojson',
     'behaviour',
     'crispy_forms',
     'leaflet'
@@ -88,10 +90,20 @@ WSGI_APPLICATION = 'smartmobility.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+        # 'ENGINE': 'django.db.backends.sqlite3',
+        # 'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+
+        'ENGINE': 'django.contrib.gis.db.backends.spatialite',
+        'NAME': os.path.join(BASE_DIR, 'spatial.db'),
+
+
+        # 'ENGINE': 'django.contrib.gis.db.backends.postgis',
+        
     }
 }
+
+# For spatial lite version
+SPATIALITE_LIBRARY_PATH = 'mod_spatialite'
 
 
 # Password validation

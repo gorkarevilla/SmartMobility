@@ -60,3 +60,14 @@ function drawTrips() {
 function drawPoint() {
 	L.geoJSON(pointFeature).addTo(map);
 }
+
+function loadDDBB (map, options) {
+
+    var dataurl = '{% url "data" %}';
+    // Download GeoJSON via Ajax
+    $.getJSON(dataurl, function (data) {
+        // Add GeoJSON layer
+        L.geoJson(data).addTo(map);
+    });
+
+}
