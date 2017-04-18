@@ -30,9 +30,9 @@ var lineStyle = {
     "opacity": 0.65
 };
 
-function initmap() {
+function initmap(map,options) {
 	// set up the map
-	map = new L.Map('map');
+	//map = new L.Map('map');
 
 	// create the tile layer with correct attribution
 	var osmUrl='http://{s}.tile.osm.org/{z}/{x}/{y}.png';
@@ -44,6 +44,7 @@ function initmap() {
 	map.setView(new L.LatLng(20,0),2);
 	map.addLayer(osm);
 
+    loadData(map,options)
 
 //	var geojsonLayer = new L.GeoJSON.AJAX("http:smartmobility.gorkarevilla.com/data/lines.geojson");       
 //    geojsonLayer.addTo(map);
@@ -63,10 +64,12 @@ function drawPoint() {
 
 function loadDDBB (map, options) {
 
+}
+
+function loadData (map, options) {
     var layer = L.geoJson();
     map.addLayer(layer);
-    $.getJSON("{% url 'data' %}", function (data) {
+    $.getJSON("data.geojson", function (data) {
         layer.addData(data);
     });
-
 }
