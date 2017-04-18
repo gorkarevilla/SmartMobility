@@ -66,6 +66,8 @@ ROOT_URLCONF = 'smartmobility.urls'
 
 SETTINGS_PATH = os.path.dirname(os.path.dirname(__file__))
 
+DATA_UPLOAD_MAX_NUMBER_FIELDS = 10000
+
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',

@@ -63,11 +63,10 @@ function drawPoint() {
 
 function loadDDBB (map, options) {
 
-    var dataurl = '{% url "data" %}';
-    // Download GeoJSON via Ajax
-    $.getJSON(dataurl, function (data) {
-        // Add GeoJSON layer
-        L.geoJson(data).addTo(map);
+    var layer = L.geoJson();
+    map.addLayer(layer);
+    $.getJSON("{% url 'data' %}", function (data) {
+        layer.addData(data);
     });
 
 }

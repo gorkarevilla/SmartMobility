@@ -13,6 +13,9 @@ import csv
 from datetime import datetime
 from datetime import timedelta
 
+from .models import Trips
+from django.contrib.gis.geos import LineString, Point
+
 # Create your views here.
 @require_http_methods(["GET"])
 def index(request):
@@ -31,7 +34,7 @@ def upload(request):
 			positions = clean_file(request.FILES['file'],spacer)
 			trips = determine_trips(positions,gaptime)
 			if (request.user.is_authenticated):
-				insert_trips(trips)
+				insert_trips(request,trips)
 				messages.success(request,"File Saved Correctly")
 				return HttpResponseRedirect('maposm.html')
 			else :
@@ -150,7 +153,33 @@ def determine_trips(positions,gaptime):
 # Trips is a list of trips: [tripNumber][timestamp][device_id][latitud][longitude]
 # In the model insert:
 # User ¿tripNumber? timestamp device_id latitude longitude
-def insert_trips(trips):
+def insert_trips(request,trips):
+
+	tripNumber = None
+	listpoints = []
+
+	for t in trips:
+
+		if(tripNumber == t[0] or tripNumber == None):
+			#print t[3],t[4]
+			#point = []
+			#point.append( (t[3],t[4]) )
+			point = Point(float(t[4]),float(t[3]))
+			listpoints.append(point)
+			
+		else:
+			print(listpoints)
+			print(tripNumber)
+
+			# Save in the model
+			try:
+				Trips( username=request.user,device_id=t[2],points=LineString(listpoints) ).save()
+			except ValueError:
+				continue
+			listpoints = []
+
+		tripNumber = t[0]
+		
 	print "Saved"
 
 

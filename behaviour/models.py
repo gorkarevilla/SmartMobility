@@ -18,5 +18,5 @@ class Trips(models.Model):
 	points = gismodels.LineStringField()
 
 	# Returns the string representation of the model.
-	def __str__(self):              # __unicode__ on Python 2
-		return self.name
+	def __unicode__(self):              # __str__ on Python !=2
+		return str(self.username) + " " + str(self.device_id) + " : "+ str(self.points)
