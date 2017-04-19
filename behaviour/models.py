@@ -15,8 +15,8 @@ class Trips(models.Model):
 	device_id = models.CharField(max_length=4)
 
 	#GeoDjango-specific fields
-	points = gismodels.LineStringField()
+	geom = gismodels.LineStringField()
 
 	# Returns the string representation of the model.
 	def __unicode__(self):              # __str__ on Python !=2
-		return str(self.username) + " " + str(self.device_id) + " : "+ str(self.points)
+		return str(self.username) + " " + str(self.device_id) + " : "+ str(self.geom)

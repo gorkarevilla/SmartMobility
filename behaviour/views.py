@@ -173,7 +173,7 @@ def insert_trips(request,trips):
 
 			# Save in the model
 			try:
-				Trips( username=request.user,device_id=t[2],points=LineString(listpoints) ).save()
+				Trips( username=request.user,device_id=t[2],geom=LineString(listpoints) ).save()
 			except ValueError:
 				continue
 			listpoints = []
