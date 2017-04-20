@@ -82,7 +82,7 @@ def clean_file(file,spacer):
 			continue
 
 		counter+=1
-	print counter
+	# print counter
 
 	return positions
 
@@ -103,14 +103,14 @@ def determine_trips(positions,gaptime):
 		try:
 			thispos = pos
 			nextpos = positions[positions.index(pos)+1] 
-			#print "Pos: "+thispos[0] + " Next: " + nextpos[0]
+			# print "Pos: "+thispos[0] + " Next: " + nextpos[0]
 			
 
 			thisdate = datetime.strptime(thispos[0], '%Y-%m-%d %H:%M:%S')
 			nextdate = datetime.strptime(nextpos[0], '%Y-%m-%d %H:%M:%S')
 
 			# If the time is close, is part of a trip
-			if (nextdate-thisdate<timedelta(seconds=gaptime)):
+			if (timedifference(nextdate,thisdate)<timedelta(seconds=gaptime) ):
 
 				#List of points for trip [tripNumber][timestamp][device_id][latitud][longitude]
 				point = []
@@ -124,9 +124,10 @@ def determine_trips(positions,gaptime):
 
 				isLastPoint=1
 
-				print point
+				#print point
 
 			else:
+
 
 				# Include the last point to the trip
 				if(isLastPoint):
@@ -148,6 +149,15 @@ def determine_trips(positions,gaptime):
 
 	return trips
 
+# Returns the deltatime between two datatimes
+def timedifference(t1,t2):
+	if(t1<t2):
+		return t2-t1
+	else:
+		return t1-t2
+
+
+
 
 # Save the trips in the model
 # Trips is a list of trips: [tripNumber][timestamp][device_id][latitud][longitude]
@@ -157,30 +167,70 @@ def insert_trips(request,trips):
 
 	tripNumber = None
 	listpoints = []
+	firstpointlatitude = None
+	firstpointlongitude = None
+	lastpointlatitude = None
+	lastpointlongitude = None
+	firsttimestamp = None
+	lasttimestamp = None
+	point = None
 
 	for t in trips:
 
-		if(tripNumber == t[0] or tripNumber == None):
-			#print t[3],t[4]
-			#point = []
-			#point.append( (t[3],t[4]) )
+		# print t
+
+		# If is the same tripNumber or
+		# the list is empty add to the list (Is the first element) or
+		if(tripNumber == t[0] or len(listpoints) == 0):
+			# Add the point to the list
 			point = Point(float(t[4]),float(t[3]))
 			listpoints.append(point)
+			lasttimestamp = t[1]
+			lastpointlatitude = t[3]
+			lastpointlongitude = t[4]
+
+			if(firstpointlatitude == None):
+				firstpointlatitude = t[3]
+				firstpointlongitude = t[4]
+				device_id = t[2]
+				firsttimestamp = t[1]
 			
 		else:
-			print(listpoints)
-			print(tripNumber)
 
 			# Save in the model
-			try:
-				Trips( username=request.user,device_id=t[2],geom=LineString(listpoints) ).save()
-			except ValueError:
-				continue
+			print "Adding: "+ device_id + " FT: " + str(firsttimestamp) + " FP: " + str(firstpointlatitude)
+			Trips( username=request.user, device_id=device_id,
+				firsttimestamp=firsttimestamp, lasttimestamp=lasttimestamp,
+				firstpointlatitude=firstpointlatitude, firstpointlongitude=firstpointlongitude,
+				lastpointlatitude=lastpointlatitude, lastpointlongitude=firstpointlongitude,
+				geom=LineString(listpoints)).save()
+
+			# Clear the temporary list			
 			listpoints = []
 
+
+			# Add the point to the list
+			point = Point(float(t[4]),float(t[3]))
+			listpoints.append(point)
+			lasttimestamp = t[1]
+			lastpointlatitude = t[3]
+			lastpointlongitude = t[4]
+			firstpointlatitude = t[3]
+			firstpointlongitude = t[4]
+			device_id = t[2]
+			firsttimestamp = t[1]
+
+
 		tripNumber = t[0]
+
+	# Finally insert the remaining list
+	print "Adding: "+ device_id + " FT: " + str(firsttimestamp) + " FP: " + str(firstpointlatitude)
+	Trips( username=request.user, device_id=device_id,
+		firsttimestamp=firsttimestamp, lasttimestamp=lasttimestamp,
+		firstpointlatitude=firstpointlatitude, firstpointlongitude=firstpointlongitude,
+		lastpointlatitude=lastpointlatitude, lastpointlongitude=firstpointlongitude,
+		geom=LineString(listpoints)).save()
 		
-	print "Saved"
 
 
 

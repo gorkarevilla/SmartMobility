@@ -14,9 +14,23 @@ class Trips(models.Model):
 		User,on_delete=models.CASCADE)
 	device_id = models.CharField(max_length=4)
 
+	firsttimestamp = models.DateTimeField()
+	lasttimestamp = models.DateTimeField()
+
+	firstpointlatitude = models.FloatField()
+	firstpointlongitude = models.FloatField()
+
+	lastpointlatitude = models.FloatField()
+	lastpointlongitude = models.FloatField()
+
+	
+
 	#GeoDjango-specific fields
-	geom = gismodels.LineStringField()
+	geom = gismodels.LineStringField() # geom is the Field to be drawn (all the points)
+
+	#Calculated fields
+
 
 	# Returns the string representation of the model.
 	def __unicode__(self):              # __str__ on Python !=2
-		return str(self.username) + " " + str(self.device_id) + " : "+ str(self.geom)
+		return str(self.username) + " : " + str(self.device_id) + " @ "+ str(self.firsttimestamp) + " - " + str(self.lasttimestamp)
