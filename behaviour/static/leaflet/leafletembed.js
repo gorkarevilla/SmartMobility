@@ -46,6 +46,10 @@ function initmap(map,options) {
 
     loadData(map,options)
 
+    map.eachLayer(function (layer) {
+        layer.bindPopup('Hello');
+    });
+
 //	var geojsonLayer = new L.GeoJSON.AJAX("http:smartmobility.gorkarevilla.com/data/lines.geojson");       
 //    geojsonLayer.addTo(map);
 
