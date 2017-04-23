@@ -5,6 +5,7 @@ from django.shortcuts import render
 from django.http import HttpResponse
 from django.http import HttpResponseRedirect
 from django.contrib import messages
+from django.contrib.auth import authenticate, login, logout
 from django.views.decorators.http import require_http_methods
 
 from .forms import UploadFileForm
@@ -49,6 +50,13 @@ def upload(request):
 
 def display(request):
 	return render (request, 'behaviour/display.html')
+
+
+@require_http_methods(["GET"])
+def user_logout(request): 
+	logout(request)
+	messages.add_message(request, messages.SUCCESS, 'You have successfully loged out!')
+	return HttpResponseRedirect('behaviour/')
 
 #Process the file
 #Format: 
