@@ -47,6 +47,8 @@ def upload(request):
 		formupload = UploadFileForm()
 	return render(request, 'behaviour/upload.html', {'formupload': formupload})
 
+def display(request):
+	return render (request, 'behaviour/display.html')
 
 #Process the file
 #Format: 

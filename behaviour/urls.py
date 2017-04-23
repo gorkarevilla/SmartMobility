@@ -9,5 +9,6 @@ urlpatterns = [
     url(r'^$', views.index, name='index'),
     url(r'^maposm', views.maposm, name='maposm'),
     url(r'^upload', views.upload, name='upload'),
+    url(r'^display', views.display, name='display'),
     url(r'^data.geojson$', GeoJSONLayerView.as_view(model=Trips), name='data'),
 ]
