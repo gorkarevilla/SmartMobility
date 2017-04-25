@@ -8,23 +8,32 @@ from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.views.decorators.http import require_http_methods
 
-from .forms import UploadFileForm
+from .forms import LoginForm, UploadFileForm
 
 import csv
+import json
 from datetime import datetime
 from datetime import timedelta
 
 from .models import Trips
 from django.contrib.gis.geos import LineString, Point
 
+from geopy.geocoders import Nominatim
+from geopy.exc import GeocoderTimedOut
+from geopy.distance import vincenty
+
 # Create your views here.
+
+
 @require_http_methods(["GET"])
 def index(request):
-	return render (request, 'behaviour/index.html')
+	userform = LoginForm()
+	return render (request, 'behaviour/index.html', {'userform': userform})
 
 @require_http_methods(["GET"])
 def maposm(request):
-	return render (request, 'behaviour/maposm.html')
+	userform = LoginForm()
+	return render (request, 'behaviour/maposm.html', {'userform': userform})
 
 def upload(request):
 	if request.method == 'POST':
@@ -45,18 +54,21 @@ def upload(request):
 			messages.error(request,"Error Uploading the File")
 			return HttpResponseRedirect('upload.html')
 	else:
+		userform = LoginForm()
 		formupload = UploadFileForm()
-	return render(request, 'behaviour/upload.html', {'formupload': formupload})
+		return render(request, 'behaviour/upload.html', {'formupload': formupload, 'userform': userform})
 
+@require_http_methods(["GET"])
 def display(request):
-	return render (request, 'behaviour/display.html')
+	userform = LoginForm()
+	return render (request, 'behaviour/display.html', {'userform': userform})
 
 
 @require_http_methods(["GET"])
 def user_logout(request): 
 	logout(request)
 	messages.add_message(request, messages.SUCCESS, 'You have successfully loged out!')
-	return HttpResponseRedirect('behaviour/')
+	return HttpResponseRedirect('/')
 
 #Process the file
 #Format: 
@@ -184,6 +196,8 @@ def insert_trips(request,trips):
 	firsttimestamp = None
 	lasttimestamp = None
 	point = None
+	city = None
+	country = None
 
 	for t in trips:
 
@@ -204,17 +218,26 @@ def insert_trips(request,trips):
 				firstpointlongitude = t[4]
 				device_id = t[2]
 				firsttimestamp = t[1]
-			
+				#Calculated values
+				# City and Country
+				try:
+					geolocator = Nominatim()
+					location = geolocator.reverse(str(firstpointlatitude) + ", "+ str(firstpointlongitude))
+					locjson = json.loads(json.dumps(location.raw))
+					city = locjson['address']['city']
+				except GeocoderTimedOut:
+					print("Error: Geocode time out")
+				except KeyError:
+					city = "Unknown"
+				try:
+					country = locjson['address']['country']
+				except KeyError:
+					country = "Unknown"			
 		else:
 
-			# Save in the model
-			print "Adding: "+ device_id + " FT: " + str(firsttimestamp) + " FP: " + str(firstpointlatitude)
-			Trips( username=request.user, device_id=device_id,
-				firsttimestamp=firsttimestamp, lasttimestamp=lasttimestamp,
-				firstpointlatitude=firstpointlatitude, firstpointlongitude=firstpointlongitude,
-				lastpointlatitude=lastpointlatitude, lastpointlongitude=firstpointlongitude,
-				geom=LineString(listpoints)).save()
-
+			insert_ddbb(request,device_id,firsttimestamp,lasttimestamp,
+				firstpointlatitude,firstpointlongitude,lastpointlatitude,lastpointlongitude,
+				listpoints,city,country)
 			# Clear the temporary list			
 			listpoints = []
 
@@ -229,21 +252,49 @@ def insert_trips(request,trips):
 			firstpointlongitude = t[4]
 			device_id = t[2]
 			firsttimestamp = t[1]
+			#Calculated values
+			# City and Country
+			try:
+				geolocator = Nominatim()
+				location = geolocator.reverse(str(firstpointlatitude) + ", "+ str(firstpointlongitude))
+				locjson = json.loads(json.dumps(location.raw))
+				city = locjson['address']['city']
+			except GeocoderTimedOut:
+				print("Error: Geocode time out")
+			except KeyError:
+				city = "Unknown"
+			try:
+				country = locjson['address']['country']
+			except KeyError:
+				country = "Unknown"
 
 
 		tripNumber = t[0]
 
 	# Finally insert the remaining list
+	insert_ddbb(request,device_id,firsttimestamp,lasttimestamp,
+		firstpointlatitude,firstpointlongitude,lastpointlatitude,lastpointlongitude,
+		listpoints,city,country)
+		
+
+def insert_ddbb(request,device_id,firsttimestamp,lasttimestamp,
+	firstpointlatitude,firstpointlongitude,lastpointlatitude,lastpointlongitude,
+	listpoints,city,country):
+
+	duration = timedifference(datetime.strptime(firsttimestamp, '%Y-%m-%d %H:%M:%S'),datetime.strptime(lasttimestamp, '%Y-%m-%d %H:%M:%S')).total_seconds()
+	distance = vincenty( (firstpointlatitude,firstpointlongitude), (lastpointlatitude,lastpointlongitude) ).meters
+	velocity = (3.6)*(distance/duration)
+
 	print "Adding: "+ device_id + " FT: " + str(firsttimestamp) + " FP: " + str(firstpointlatitude)
+	
 	Trips( username=request.user, device_id=device_id,
 		firsttimestamp=firsttimestamp, lasttimestamp=lasttimestamp,
 		firstpointlatitude=firstpointlatitude, firstpointlongitude=firstpointlongitude,
 		lastpointlatitude=lastpointlatitude, lastpointlongitude=firstpointlongitude,
-		geom=LineString(listpoints)).save()
-		
-
-
-
+		geom=LineString(listpoints),
+		city=city, country=country,
+		duration=duration, distance=distance, velocity=velocity
+	).save()
 
 
 

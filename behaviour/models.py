@@ -29,8 +29,14 @@ class Trips(models.Model):
 	geom = gismodels.LineStringField() # geom is the Field to be drawn (all the points)
 
 	#Calculated fields
+	city = models.CharField(max_length=20)
+	country = models.CharField(max_length=20)
+
+	duration = models.FloatField(default=None, blank=True, null=True)
+	distance = models.FloatField(default=None, blank=True, null=True)
+	velocity = models.FloatField(default=None, blank=True, null=True)
 
 
 	# Returns the string representation of the model.
 	def __unicode__(self):              # __str__ on Python !=2
-		return str(self.username) + " : " + str(self.device_id) + " @ "+ str(self.firsttimestamp) + " - " + str(self.lasttimestamp)
+		return str(self.username) + " : " + str(self.device_id) + " @ "+ str(self.firsttimestamp) + " - " + str(self.lasttimestamp) + " - " + str(self.duration)

@@ -41,7 +41,9 @@ INSTALLED_APPS = [
     'djgeojson',
     'behaviour',
     'crispy_forms',
-    'leaflet'
+    'leaflet',
+    'bootstrap3',
+    'geopy'
 ]
 
 LEAFLET_CONFIG = {
