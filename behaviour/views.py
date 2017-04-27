@@ -278,8 +278,23 @@ def insert_trips(request,trips):
 				city = locjson['address']['city']
 			except GeocoderTimedOut:
 				print("Error: Geocode time out")
+				continue
 			except KeyError:
-				city = "Unknown"
+				try:
+					city = locjson['address']['town']
+				except KeyError:
+					try:
+						city = locjson['address']['village']
+					except KeyError:
+						try:
+							city = locjson['address']['neighbourhood']
+						except KeyError:
+							print(locjson)
+							city = "Unknown"
+			except:
+				print("ERROR")
+				continue
+				
 			try:
 				country = locjson['address']['country']
 			except KeyError:

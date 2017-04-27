@@ -37,6 +37,9 @@ class Trips(models.Model):
 	velocity = models.FloatField(default=None, blank=True, null=True)
 	npoints = models.IntegerField(default=None, blank=True, null=True)
 
+	naccelerations = models.IntegerField(default=None, blank=True, null=True)
+	nbreaks = models.IntegerField(default=None, blank=True, null=True)
+
 
 	# Returns the string representation of the model.
 	def __unicode__(self):              # __str__ on Python !=2
