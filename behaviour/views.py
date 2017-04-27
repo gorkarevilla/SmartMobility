@@ -87,28 +87,63 @@ def clean_file(file,spacer):
 
 	reader = csv.reader(file, delimiter=str(spacer))
 
+	firstline = file.readline()
+
+	type1 = "dateTime device_id id latitude longitude speed\n"
+	type2 = "deviceId,latitude,longitude,dateTime,speed,id\n"
+
+	print("fl:"+firstline+".")
+
+	ntype=0
+	if(firstline == type1):
+		print "type1"
+		ntype=1
+		reader = csv.reader(file, delimiter=str(spacer))
+	elif(firstline == type2):
+		print "type2"
+		ntype=2
+		reader = csv.reader(file, delimiter=str(','))
+	else:
+		print "notype"
 	counter = 0
 	#for line in file:
 	for line in reader:
 		#Check the line
 		try:
-			point = []
-			# 2017-02-02T19:18:36.063Z
-			timestamp = datetime.strptime(line[0], '%Y-%m-%dT%H:%M:%S.%fZ')
-			point.append(timestamp.strftime("%Y-%m-%d %H:%M:%S"))
-			point.append(line[1]) # device_id
-			point.append(line[3]) # latitude
-			point.append(line[4]) # longitude
-			point.append(line[5]) # speed
+			if(ntype == 1):
+				point = []
+				# 2017-02-02T19:18:36.063Z
+				timestamp = datetime.strptime(line[0], '%Y-%m-%dT%H:%M:%S.%fZ')
+				point.append(timestamp.strftime("%Y-%m-%d %H:%M:%S"))
+				point.append(line[1]) # device_id
+				point.append(line[3]) # latitude
+				point.append(line[4]) # longitude
+				point.append(line[5]) # speed
 
-			positions.append(point)
+				positions.append(point)
 
-			#writter.writerow([strtimestamp, device_id, latitude, longitude])
+				
+			elif(ntype == 2):
+				point = []
+				# 2017-02-02 19:18:36
+				timestamp = datetime.strptime(line[3][:19], '%Y-%m-%d %H:%M:%S')
+				point.append(timestamp.strftime("%Y-%m-%d %H:%M:%S"))
+				point.append(line[0]) # device_id
+				point.append(line[1]) # latitude
+				point.append(line[2]) # longitude
+				point.append(line[4]) # speed
+
+				positions.append(point)
+
+				
 			
 		except ValueError:
 			# 2017-01-24
 			#datetime1 = datetime.strptime(line[0], '%Y-%m-%d')
 			print "ValueError: " + str(line)
+			continue
+		except IndexError:
+			print "IndexError: " + str(line)
 			continue
 
 		counter+=1
@@ -289,12 +324,12 @@ def insert_trips(request,trips):
 						try:
 							city = locjson['address']['neighbourhood']
 						except KeyError:
-							print(locjson)
+							#print(locjson)
 							city = "Unknown"
 			except:
 				print("ERROR")
 				continue
-				
+
 			try:
 				country = locjson['address']['country']
 			except KeyError:
@@ -316,6 +351,11 @@ def insert_ddbb(request,device_id,firsttimestamp,lasttimestamp,
 
 	duration = timedifference(datetime.strptime(firsttimestamp, '%Y-%m-%d %H:%M:%S'),datetime.strptime(lasttimestamp, '%Y-%m-%d %H:%M:%S')).total_seconds()
 	distance = vincenty( (firstpointlatitude,firstpointlongitude), (lastpointlatitude,lastpointlongitude) ).meters
+	npoints = len(listpoints)
+
+	if(npoints < 2):
+		return
+
 	try:
 		velocity = (3.6)*(distance/duration)
 	except ZeroDivisionError:
@@ -330,7 +370,7 @@ def insert_ddbb(request,device_id,firsttimestamp,lasttimestamp,
 		lastpointlatitude=lastpointlatitude, lastpointlongitude=firstpointlongitude,
 		geom=LineString(listpoints),
 		city=city, country=country,
-		duration=duration, distance=distance, velocity=velocity, npoints=len(listpoints)
+		duration=duration, distance=distance, velocity=velocity, npoints=npoints
 	).save()
 
 
