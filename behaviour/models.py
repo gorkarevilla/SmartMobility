@@ -35,6 +35,7 @@ class Trips(models.Model):
 	duration = models.FloatField(default=None, blank=True, null=True)
 	distance = models.FloatField(default=None, blank=True, null=True)
 	velocity = models.FloatField(default=None, blank=True, null=True)
+	npoints = models.IntegerField(default=None, blank=True, null=True)
 
 
 	# Returns the string representation of the model.

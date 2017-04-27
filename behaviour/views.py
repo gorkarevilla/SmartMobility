@@ -315,7 +315,7 @@ def insert_ddbb(request,device_id,firsttimestamp,lasttimestamp,
 		lastpointlatitude=lastpointlatitude, lastpointlongitude=firstpointlongitude,
 		geom=LineString(listpoints),
 		city=city, country=country,
-		duration=duration, distance=distance, velocity=velocity
+		duration=duration, distance=distance, velocity=velocity, npoints=len(listpoints)
 	).save()
 
 
