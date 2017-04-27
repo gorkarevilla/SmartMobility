@@ -77,7 +77,8 @@ def user_logout(request):
 #
 #Format output:
 # positions = 	[
-#				[timestamp] [device_id] [latitude] [longitude]
+#					[timestamp] 			[device_id]	[latitude]		[longitude] 	[speed]
+#					[2017-01-24 09:49:24] 	[za0] 		[40.4251587] 	[-3.64513278] 	[0]
 # 				]
 # 
 def clean_file(file,spacer):
@@ -98,6 +99,7 @@ def clean_file(file,spacer):
 			point.append(line[1]) # device_id
 			point.append(line[3]) # latitude
 			point.append(line[4]) # longitude
+			point.append(line[5]) # speed
 
 			positions.append(point)
 
@@ -116,6 +118,11 @@ def clean_file(file,spacer):
 
 # Determine Trips
 # Delete the points and determine the trips by timestamp and device_id
+# input positions and gaptime in seconds
+# output:
+# trips = 	[
+#				[tripNumber] [timestamp] [device_id] [latitude] [longitude] [] []
+# 			]
 def determine_trips(positions,gaptime):
 
 	#List of trips
@@ -136,9 +143,11 @@ def determine_trips(positions,gaptime):
 
 			thisdate = datetime.strptime(thispos[0], '%Y-%m-%d %H:%M:%S')
 			nextdate = datetime.strptime(nextpos[0], '%Y-%m-%d %H:%M:%S')
+			thisdevice = thispos[1]
+			nextdevice = nextpos[1]
 
 			# If the time is close, is part of a trip
-			if (timedifference(nextdate,thisdate)<timedelta(seconds=gaptime) ):
+			if (timedifference(nextdate,thisdate)<timedelta(seconds=gaptime) and thisdevice == nextdevice):
 
 				#List of points for trip [tripNumber][timestamp][device_id][latitud][longitude]
 				point = []
@@ -195,6 +204,7 @@ def timedifference(t1,t2):
 def insert_trips(request,trips):
 
 	tripNumber = None
+	device_id = None
 	listpoints = []
 	firstpointlatitude = None
 	firstpointlongitude = None
@@ -279,9 +289,10 @@ def insert_trips(request,trips):
 		tripNumber = t[0]
 
 	# Finally insert the remaining list
-	insert_ddbb(request,device_id,firsttimestamp,lasttimestamp,
-		firstpointlatitude,firstpointlongitude,lastpointlatitude,lastpointlongitude,
-		listpoints,city,country)
+	if(len(listpoints)>0):	
+		insert_ddbb(request,device_id,firsttimestamp,lasttimestamp,
+			firstpointlatitude,firstpointlongitude,lastpointlatitude,lastpointlongitude,
+			listpoints,city,country)
 		
 
 def insert_ddbb(request,device_id,firsttimestamp,lasttimestamp,
@@ -296,7 +307,7 @@ def insert_ddbb(request,device_id,firsttimestamp,lasttimestamp,
 		velocity = 0
 		
 
-	print "Adding: "+ device_id + " FT: " + str(firsttimestamp) + " FP: " + str(firstpointlatitude)
+	print "Adding: "+ device_id + " FT: " + str(firsttimestamp) + " city: " + city + "("+country+")"
 	
 	Trips( username=request.user, device_id=device_id,
 		firsttimestamp=firsttimestamp, lasttimestamp=lasttimestamp,
@@ -306,8 +317,6 @@ def insert_ddbb(request,device_id,firsttimestamp,lasttimestamp,
 		city=city, country=country,
 		duration=duration, distance=distance, velocity=velocity
 	).save()
-
-
 
 
 
