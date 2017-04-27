@@ -71,9 +71,14 @@ def user_logout(request):
 	return HttpResponseRedirect('/')
 
 #Process the file
-#Format: 
+#Format input: 
 # dateTime device_id id latitude longitude speed
 # 2017-01-24T09:49:24.063Z za0 c3e0b6fcd96d0a329903887ec39cb5835780db17 40.42951587 -3.64513278 0
+#
+#Format output:
+# positions = 	[
+#				[timestamp] [device_id] [latitude] [longitude]
+# 				]
 # 
 def clean_file(file,spacer):
 
@@ -101,6 +106,7 @@ def clean_file(file,spacer):
 		except ValueError:
 			# 2017-01-24
 			#datetime1 = datetime.strptime(line[0], '%Y-%m-%d')
+			print "ValueError: " + str(line)
 			continue
 
 		counter+=1
@@ -167,6 +173,7 @@ def determine_trips(positions,gaptime):
 				isLastPoint=0
 
 		except IndexError:
+			print "IndexError: " + str(pos)
 			continue
 
 	return trips
@@ -283,7 +290,11 @@ def insert_ddbb(request,device_id,firsttimestamp,lasttimestamp,
 
 	duration = timedifference(datetime.strptime(firsttimestamp, '%Y-%m-%d %H:%M:%S'),datetime.strptime(lasttimestamp, '%Y-%m-%d %H:%M:%S')).total_seconds()
 	distance = vincenty( (firstpointlatitude,firstpointlongitude), (lastpointlatitude,lastpointlongitude) ).meters
-	velocity = (3.6)*(distance/duration)
+	try:
+		velocity = (3.6)*(distance/duration)
+	except ZeroDivisionError:
+		velocity = 0
+		
 
 	print "Adding: "+ device_id + " FT: " + str(firsttimestamp) + " FP: " + str(firstpointlatitude)
 	

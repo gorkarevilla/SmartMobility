@@ -39,4 +39,4 @@ class Trips(models.Model):
 
 	# Returns the string representation of the model.
 	def __unicode__(self):              # __str__ on Python !=2
-		return str(self.username) + " : " + str(self.device_id) + " @ "+ str(self.firsttimestamp) + " - " + str(self.lasttimestamp) + " - " + str(self.duration)
+		return str(self.username) + " : " + str(self.device_id) + " @ "+ str(self.firsttimestamp) + " - " + str(self.lasttimestamp) + " - " + str(self.distance)
