@@ -31,6 +31,7 @@ class Trips(models.Model):
 	#Calculated fields
 	city = models.CharField(max_length=20)
 	country = models.CharField(max_length=20)
+	citytype = models.CharField(max_length=20, default=None, blank=True, null=True)
 
 	duration = models.FloatField(default=None, blank=True, null=True)
 	distance = models.FloatField(default=None, blank=True, null=True)

@@ -250,6 +250,7 @@ def insert_trips(request,trips):
 	point = None
 	city = None
 	country = None
+	citytype = None
 
 	for t in trips:
 
@@ -277,19 +278,43 @@ def insert_trips(request,trips):
 					location = geolocator.reverse(str(firstpointlatitude) + ", "+ str(firstpointlongitude))
 					locjson = json.loads(json.dumps(location.raw))
 					city = locjson['address']['city']
+					citytype="city"
 				except GeocoderTimedOut:
 					print("Error: Geocode time out")
+					continue
 				except KeyError:
-					city = "Unknown"
+					try:
+						city = locjson['address']['town']
+						citytype="town"
+					except KeyError:
+						try:
+							city = locjson['address']['village']
+							citytype="village"
+						except KeyError:
+							try:
+								city = locjson['address']['neighbourhood']
+								citytype="neighbourhood"
+							except KeyError:
+								try:
+									city = locjson['address']['hamlet']
+									citytype="hamlet"
+								except KeyError:
+									#print(locjson)
+									city = "Unknown"
+									citytype="Unknown"
+				except:
+					print("ERROR")
+					continue
+
 				try:
 					country = locjson['address']['country']
 				except KeyError:
-					country = "Unknown"			
+					country = "Unknown"
 		else:
 
 			insert_ddbb(request,device_id,firsttimestamp,lasttimestamp,
 				firstpointlatitude,firstpointlongitude,lastpointlatitude,lastpointlongitude,
-				listpoints,city,country)
+				listpoints,city,country,citytype)
 			# Clear the temporary list			
 			listpoints = []
 
@@ -311,21 +336,30 @@ def insert_trips(request,trips):
 				location = geolocator.reverse(str(firstpointlatitude) + ", "+ str(firstpointlongitude))
 				locjson = json.loads(json.dumps(location.raw))
 				city = locjson['address']['city']
+				citytype="city"
 			except GeocoderTimedOut:
 				print("Error: Geocode time out")
 				continue
 			except KeyError:
 				try:
 					city = locjson['address']['town']
+					citytype="town"
 				except KeyError:
 					try:
 						city = locjson['address']['village']
+						citytype="village"
 					except KeyError:
 						try:
 							city = locjson['address']['neighbourhood']
+							citytype="neighbourhood"
 						except KeyError:
-							#print(locjson)
-							city = "Unknown"
+							try:
+								city = locjson['address']['hamlet']
+								citytype="hamlet"
+							except KeyError:
+								#print(locjson)
+								city = "Unknown"
+								citytype="Unknown"
 			except:
 				print("ERROR")
 				continue
@@ -342,12 +376,12 @@ def insert_trips(request,trips):
 	if(len(listpoints)>0):	
 		insert_ddbb(request,device_id,firsttimestamp,lasttimestamp,
 			firstpointlatitude,firstpointlongitude,lastpointlatitude,lastpointlongitude,
-			listpoints,city,country)
+			listpoints,city,country,citytype)
 		
 
 def insert_ddbb(request,device_id,firsttimestamp,lasttimestamp,
 	firstpointlatitude,firstpointlongitude,lastpointlatitude,lastpointlongitude,
-	listpoints,city,country):
+	listpoints,city,country,citytype):
 
 	duration = timedifference(datetime.strptime(firsttimestamp, '%Y-%m-%d %H:%M:%S'),datetime.strptime(lasttimestamp, '%Y-%m-%d %H:%M:%S')).total_seconds()
 	distance = vincenty( (firstpointlatitude,firstpointlongitude), (lastpointlatitude,lastpointlongitude) ).meters
@@ -369,7 +403,7 @@ def insert_ddbb(request,device_id,firsttimestamp,lasttimestamp,
 		firstpointlatitude=firstpointlatitude, firstpointlongitude=firstpointlongitude,
 		lastpointlatitude=lastpointlatitude, lastpointlongitude=firstpointlongitude,
 		geom=LineString(listpoints),
-		city=city, country=country,
+		city=city, country=country,citytype=citytype,
 		duration=duration, distance=distance, velocity=velocity, npoints=npoints
 	).save()
 
