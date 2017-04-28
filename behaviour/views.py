@@ -15,7 +15,7 @@ import json
 from datetime import datetime
 from datetime import timedelta
 
-from .models import Trips
+from .models import Trips, Points
 from django.contrib.gis.geos import LineString, Point
 
 from geopy.geocoders import Nominatim
@@ -45,6 +45,7 @@ def upload(request):
 			trips = determine_trips(positions,gaptime)
 			if (request.user.is_authenticated):
 				insert_trips(request,trips)
+				#update_accelerations()
 				messages.success(request,"File Saved Correctly")
 				return HttpResponseRedirect('maposm.html')
 			else :
@@ -61,6 +62,7 @@ def upload(request):
 @require_http_methods(["GET"])
 def display(request):
 	userform = LoginForm()
+	update_accelerations()
 	return render (request, 'behaviour/display.html', {'userform': userform})
 
 
@@ -156,7 +158,7 @@ def clean_file(file,spacer):
 # input positions and gaptime in seconds
 # output:
 # trips = 	[
-#				[tripNumber] [timestamp] [device_id] [latitude] [longitude] [] []
+#				[tripNumber] [timestamp] [device_id] [latitude] [longitude] [speed]
 # 			]
 def determine_trips(positions,gaptime):
 
@@ -191,6 +193,7 @@ def determine_trips(positions,gaptime):
 				point.append(thispos[1]) # device_id
 				point.append(thispos[2]) # latitude
 				point.append(thispos[3]) # longitude
+				point.append(thispos[4]) # speed
 
 				trips.append(point)
 
@@ -210,6 +213,7 @@ def determine_trips(positions,gaptime):
 					point.append(thispos[1]) # device_id
 					point.append(thispos[2]) # latitude
 					point.append(thispos[3]) # longitude
+					point.append(thispos[4]) # speed
 
 					trips.append(point)					
 
@@ -233,7 +237,7 @@ def timedifference(t1,t2):
 
 
 # Save the trips in the model
-# Trips is a list of trips: [tripNumber][timestamp][device_id][latitud][longitude]
+# Trips is a list of trips: [tripNumber][timestamp][device_id][latitude][longitude][speed]
 # In the model insert:
 # User ¿tripNumber? timestamp device_id latitude longitude
 def insert_trips(request,trips):
@@ -241,6 +245,7 @@ def insert_trips(request,trips):
 	tripNumber = None
 	device_id = None
 	listpoints = []
+	listcompletepoints = []
 	firstpointlatitude = None
 	firstpointlongitude = None
 	lastpointlatitude = None
@@ -260,6 +265,14 @@ def insert_trips(request,trips):
 		# the list is empty add to the list (Is the first element) or
 		if(tripNumber == t[0] or len(listpoints) == 0):
 			# Add the point to the list
+			completepoint = []
+			completepoint.append(t[0]) #tripNumber
+			completepoint.append(t[1]) #timestamp
+			completepoint.append(t[2]) #device_id
+			completepoint.append(t[3]) #latitude
+			completepoint.append(t[4]) #longitude
+			completepoint.append(t[5]) #speed
+			listcompletepoints.append(completepoint)
 			point = Point(float(t[4]),float(t[3]))
 			listpoints.append(point)
 			lasttimestamp = t[1]
@@ -314,12 +327,20 @@ def insert_trips(request,trips):
 
 			insert_ddbb(request,device_id,firsttimestamp,lasttimestamp,
 				firstpointlatitude,firstpointlongitude,lastpointlatitude,lastpointlongitude,
-				listpoints,city,country,citytype)
+				listpoints,listcompletepoints,city,country,citytype)
 			# Clear the temporary list			
 			listpoints = []
-
+			listcompletepoints = []
 
 			# Add the point to the list
+			completepoint = []
+			completepoint.append(t[0]) #tripNumber
+			completepoint.append(t[1]) #timestamp
+			completepoint.append(t[2]) #device_id
+			completepoint.append(t[3]) #latitude
+			completepoint.append(t[4]) #longitude
+			completepoint.append(t[5]) #speed
+			listcompletepoints.append(completepoint)
 			point = Point(float(t[4]),float(t[3]))
 			listpoints.append(point)
 			lasttimestamp = t[1]
@@ -376,12 +397,12 @@ def insert_trips(request,trips):
 	if(len(listpoints)>0):	
 		insert_ddbb(request,device_id,firsttimestamp,lasttimestamp,
 			firstpointlatitude,firstpointlongitude,lastpointlatitude,lastpointlongitude,
-			listpoints,city,country,citytype)
+			listpoints,listcompletepoints,city,country,citytype)
 		
 
 def insert_ddbb(request,device_id,firsttimestamp,lasttimestamp,
 	firstpointlatitude,firstpointlongitude,lastpointlatitude,lastpointlongitude,
-	listpoints,city,country,citytype):
+	listpoints,listcompletepoints,city,country,citytype):
 
 	duration = timedifference(datetime.strptime(firsttimestamp, '%Y-%m-%d %H:%M:%S'),datetime.strptime(lasttimestamp, '%Y-%m-%d %H:%M:%S')).total_seconds()
 	distance = vincenty( (firstpointlatitude,firstpointlongitude), (lastpointlatitude,lastpointlongitude) ).meters
@@ -394,19 +415,53 @@ def insert_ddbb(request,device_id,firsttimestamp,lasttimestamp,
 		velocity = (3.6)*(distance/duration)
 	except ZeroDivisionError:
 		velocity = 0
-		
-
-	print "Adding: "+ device_id + " FT: " + str(firsttimestamp) + " city: " + city + "("+country+")"
 	
-	Trips( username=request.user, device_id=device_id,
+
+	#Determine accelerations
+	gapac = 1.5
+	gapbk = 0.5
+	naccelerations = 0
+	nbreaks = 0
+	prevspeed=float(listcompletepoints[0][5])
+	for completepoint in listcompletepoints:
+
+		curspeed = float(completepoint[5])
+
+		# Lecture error? or first/last point?
+		if(curspeed !=0 and prevspeed !=0):
+			if(prevspeed*gapac < curspeed):
+				naccelerations+=1
+
+			if(prevspeed*gapbk > curspeed):
+				nbreaks+= 1
+
+		prevspeed=curspeed
+
+
+	print "Adding: "+ device_id + " Points: " + str(npoints) + " A("+str(naccelerations) +") "+ " A("+str(nbreaks) +") "+" city: " + city + "("+country+")"
+	
+	insert = Trips( username=request.user, device_id=device_id,
 		firsttimestamp=firsttimestamp, lasttimestamp=lasttimestamp,
 		firstpointlatitude=firstpointlatitude, firstpointlongitude=firstpointlongitude,
 		lastpointlatitude=lastpointlatitude, lastpointlongitude=firstpointlongitude,
 		geom=LineString(listpoints),
 		city=city, country=country,citytype=citytype,
-		duration=duration, distance=distance, velocity=velocity, npoints=npoints
-	).save()
+		duration=duration, distance=distance, velocity=velocity, npoints=npoints,
+		naccelerations=naccelerations,nbreaks=nbreaks
+	)
+
+	insert.save()
 
 
+	# Trips is a list of trips: [tripNumber][timestamp][device_id][latitude][longitude][speed]
+	#for completepoint in listcompletepoints:
+	#	Points(tripid=insert,timestamp=completepoint[1],device_id=completepoint[2],
+	#		latitude=completepoint[3],longitude=completepoint[4],speed=completepoint[5]
+	#		).save()
 
+def update_accelerations():
 
+	tripslist = Trips.objects.values_list('id','geom')
+	for tripid, points in tripslist:
+		print tripid
+		print points

@@ -7,6 +7,7 @@ from django.contrib.gis.db import models as gismodels
 
 # Create your models here.
 
+
 # Model with all the points
 class Trips(models.Model):
 	# Regular Fields
@@ -41,7 +42,35 @@ class Trips(models.Model):
 	naccelerations = models.IntegerField(default=None, blank=True, null=True)
 	nbreaks = models.IntegerField(default=None, blank=True, null=True)
 
-
 	# Returns the string representation of the model.
 	def __unicode__(self):              # __str__ on Python !=2
 		return self.city + " : " + str(self.device_id) + " @ "+ str(self.firsttimestamp) + " - " + str(self.lasttimestamp) + " - " + str(self.distance)
+
+
+
+class Points(models.Model):
+	# Regular Fields
+	tripid = models.ForeignKey(
+		Trips,on_delete=models.CASCADE)
+
+	timestamp = models.DateTimeField()
+	device_id = models.CharField(max_length=4) 
+	latitude = models.FloatField()
+	longitude = models.FloatField()
+	speed = models.FloatField()
+
+	def __unicode__(self):              # __str__ on Python !=2
+		return str(self.tripid) + "-> " + str(self.timestamp) + " @ " + str(self.latitude) + " : " + str(self.latitude) + " (" +str(self.speed)+")"
+
+
+#Model with all the accelerations of the points
+class TripAccelerations(models.Model):
+	# Regular Fields
+	tripid = models.ForeignKey(
+		Trips,on_delete=models.CASCADE)
+
+	naccelerations = models.IntegerField(default=None, blank=True, null=True)
+	nbreaks = models.IntegerField(default=None, blank=True, null=True)
+
+	def __unicode__(self):              # __str__ on Python !=2
+		return str(self.tripid) + " : " + str(self.naccelerations) + " - "+ str(self.nbreaks)
