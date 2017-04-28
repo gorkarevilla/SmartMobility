@@ -44,7 +44,8 @@ def upload(request):
 			positions = clean_file(request.FILES['file'],spacer)
 			trips = determine_trips(positions,gaptime)
 			if (request.user.is_authenticated):
-				insert_trips(request,trips)
+				#insert_trips(request,trips)
+				split_trips(request,trips)
 				messages.success(request,"File Saved Correctly")
 				return HttpResponseRedirect('maposm.html')
 			else :
@@ -156,7 +157,7 @@ def clean_file(file,spacer):
 # input positions and gaptime in seconds
 # output:
 # trips = 	[
-#				[tripNumber] [timestamp] [device_id] [latitude] [longitude] [] []
+#				[tripNumber] [timestamp] [device_id] [latitude] [longitude] [speed]
 # 			]
 def determine_trips(positions,gaptime):
 
@@ -191,6 +192,7 @@ def determine_trips(positions,gaptime):
 				point.append(thispos[1]) # device_id
 				point.append(thispos[2]) # latitude
 				point.append(thispos[3]) # longitude
+				point.append(thispos[4]) # speed
 
 				trips.append(point)
 
@@ -210,6 +212,7 @@ def determine_trips(positions,gaptime):
 					point.append(thispos[1]) # device_id
 					point.append(thispos[2]) # latitude
 					point.append(thispos[3]) # longitude
+					point.append(thispos[4]) # speed
 
 					trips.append(point)					
 
@@ -233,7 +236,7 @@ def timedifference(t1,t2):
 
 
 # Save the trips in the model
-# Trips is a list of trips: [tripNumber][timestamp][device_id][latitud][longitude]
+# Trips is a list of trips: [tripNumber][timestamp][device_id][latitud][longitude][speed]
 # In the model insert:
 # User ¿tripNumber? timestamp device_id latitude longitude
 def insert_trips(request,trips):
@@ -378,6 +381,36 @@ def insert_trips(request,trips):
 			firstpointlatitude,firstpointlongitude,lastpointlatitude,lastpointlongitude,
 			listpoints,city,country,citytype)
 		
+
+
+# Save the trips in the model
+# Trips is a list of trips: [tripNumber][timestamp][device_id][latitud][longitude][speed]
+# In the model insert:
+# User ¿tripNumber? timestamp device_id latitude longitude
+def split_trips(request,trips):
+
+	currentTN = trips[0][0]
+
+	listpoints = []
+
+	for tripNumber, timestamp, device_id, latitude, longitude, speed in trips:
+
+		# IF is the same trip add to the list
+		if(tripNumber == currentTN):
+			point = []
+			point.append(timestamp)
+			point.append(latitude)
+			point.append(longitude)
+			point.append(speed)
+			
+			listpoints.append(point)
+		else:
+			insert_tripddbb(request,device_id,listpoints)
+
+
+
+
+
 
 def insert_ddbb(request,device_id,firsttimestamp,lasttimestamp,
 	firstpointlatitude,firstpointlongitude,lastpointlatitude,lastpointlongitude,
