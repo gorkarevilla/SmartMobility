@@ -11,5 +11,6 @@ urlpatterns = [
     url(r'^upload', views.upload, name='upload'),
     url(r'^display', views.display, name='display'),
     url(r'^logout', views.user_logout, name='logout'),
+    url(r'^download', views.download_file, name='download'),
     url(r'^data.geojson$', GeoJSONLayerView.as_view(model=Trips), name='data'),
 ]

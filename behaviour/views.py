@@ -72,6 +72,26 @@ def user_logout(request):
 	messages.add_message(request, messages.SUCCESS, 'You have successfully loged out!')
 	return HttpResponseRedirect('/')
 
+@require_http_methods(["GET"])
+def download_file(request):
+	# Create the HttpResponse object with the appropriate CSV header.
+	response = HttpResponse(content_type='text/csv')
+	response['Content-Disposition'] = 'attachment; filename="data.csv"'
+
+	writer = csv.writer(response)
+
+	tripslist = Trips.objects.values_list('id', 'firsttimestamp', 'city', 'country', 'citytype', 'duration', 'distance', 'velocity', 'npoints', 'naccelerations', 'nbreaks')
+
+	writer.writerow(["tripid", "firsttimestamp", "city", "country", "citytype", "duration", "distance", "velocity", "npoints", "naccelerations", "nbreaks"])	
+	for tripid, firsttimestamp, city, country, citytype, duration, distance, velocity, npoints, naccelerations, nbreaks in tripslist:
+
+		writer.writerow([tripid, firsttimestamp, city.encode('utf-8').strip(), country.encode('utf-8').strip(), citytype, duration, distance, velocity, npoints, naccelerations, nbreaks])
+		
+
+
+	return response
+
+
 #Process the file
 #Format input: 
 # dateTime device_id id latitude longitude speed
@@ -465,3 +485,4 @@ def update_accelerations():
 	for tripid, points in tripslist:
 		print tripid
 		print points
+
