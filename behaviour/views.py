@@ -73,7 +73,7 @@ def user_logout(request):
 	return HttpResponseRedirect('/')
 
 @require_http_methods(["GET"])
-def downloadfile(request):
+def download_csv_file(request):
 	# Create the HttpResponse object with the appropriate CSV header.
 	response = HttpResponse(content_type='text/csv')
 	response['Content-Disposition'] = 'attachment; filename="data.csv"'
