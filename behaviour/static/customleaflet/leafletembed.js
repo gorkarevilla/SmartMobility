@@ -46,9 +46,12 @@ function initmap(map,options) {
 
     loadData(map,options)
 
-    map.eachLayer(function (layer) {
-        layer.bindPopup('Hello');
-    });
+    //map.eachLayer(function (layer) {
+    //    layer.bindPopup('Hello');
+    //});
+
+
+
 
 //	var geojsonLayer = new L.GeoJSON.AJAX("http:smartmobility.gorkarevilla.com/data/lines.geojson");       
 //    geojsonLayer.addTo(map);
@@ -71,9 +74,17 @@ function loadDDBB (map, options) {
 }
 
 function loadData (map, options) {
-    var layer = L.geoJson();
+    var layer = L.geoJson(false, {
+        //onEachFeature: onEachFeature
+        onEachFeature: function (feature, layer) {
+            //layer.bindPopup(feature.properties.description);
+            
+            
+        }
+    });
     map.addLayer(layer);
     $.getJSON("data.geojson", function (data) {
         layer.addData(data);
     });
 }
+
