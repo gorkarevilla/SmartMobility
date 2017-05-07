@@ -12,5 +12,6 @@ urlpatterns = [
     url(r'^display', views.display, name='display'),
     url(r'^logout', views.user_logout, name='logout'),
     url(r'^downloadfile', views.downloadfile, name='downloadfile'),
+    url(r'^deletedata', views.clean_DDBB, name='deletedata'),
     url(r'^data.geojson$', GeoJSONLayerView.as_view(model=Trips), name='data'),
 ]

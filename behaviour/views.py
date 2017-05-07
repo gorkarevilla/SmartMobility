@@ -72,6 +72,12 @@ def user_logout(request):
 	messages.add_message(request, messages.SUCCESS, 'You have successfully loged out!')
 	return HttpResponseRedirect('/')
 
+
+@require_http_methods(["GET"])
+def clean_DDBB(request):
+	Trips.objects.all().delete()
+	return HttpResponseRedirect('maposm.html')
+
 @require_http_methods(["GET"])
 def downloadfile(request):
 	# Create the HttpResponse object with the appropriate CSV header.
