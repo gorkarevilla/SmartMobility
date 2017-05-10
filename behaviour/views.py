@@ -19,6 +19,7 @@ from .models import Trips, Points
 from django.contrib.gis.geos import LineString, Point
 
 from geopy.geocoders import Nominatim
+from time import sleep
 from geopy.exc import GeocoderTimedOut
 from geopy.distance import vincenty
 
@@ -42,6 +43,9 @@ def upload(request):
 			spacer = " "
 			gaptime = 120
 			positions = clean_file(request.FILES['file'],spacer)
+			if (positions == None):
+				messages.error(request, 'This file can not be processed!')
+				return HttpResponseRedirect('upload.html')
 			trips = determine_trips(positions,gaptime)
 			if (request.user.is_authenticated):
 				insert_trips(request,trips)
@@ -76,6 +80,7 @@ def user_logout(request):
 @require_http_methods(["GET"])
 def clean_DDBB(request):
 	Trips.objects.all().delete()
+	print("All Data Deleted!")
 	return HttpResponseRedirect('maposm.html')
 
 @require_http_methods(["GET"])
@@ -127,12 +132,14 @@ def clean_file(file,spacer):
 		print "type1"
 		ntype=1
 		reader = csv.reader(file, delimiter=str(spacer))
-	elif(firstline == type2):
+	elif(firstline[:45] == type2[:45]):
 		print "type2"
 		ntype=2
 		reader = csv.reader(file, delimiter=str(','))
 	else:
 		print "notype"
+		print(firstline + " != " + type1 + " OR " + type2)
+		return
 	counter = 0
 	#for line in file:
 	for line in reader:
@@ -341,8 +348,8 @@ def insert_trips(request,trips):
 									#print(locjson)
 									city = "Unknown"
 									citytype="Unknown"
-				except:
-					print("ERROR")
+				except Exception as e:
+					print("ERROR: " + str(e))
 					continue
 
 				try:
@@ -379,6 +386,7 @@ def insert_trips(request,trips):
 			#Calculated values
 			# City and Country
 			try:
+				sleep(2) # after last line in if
 				geolocator = Nominatim()
 				location = geolocator.reverse(str(firstpointlatitude) + ", "+ str(firstpointlongitude))
 				locjson = json.loads(json.dumps(location.raw))
@@ -434,7 +442,10 @@ def insert_ddbb(request,device_id,firsttimestamp,lasttimestamp,
 	distance = vincenty( (firstpointlatitude,firstpointlongitude), (lastpointlatitude,lastpointlongitude) ).meters
 	npoints = len(listpoints)
 
+	# no inserts
 	if(npoints < 2):
+		return
+	if(distance == 0 or duration == 0):
 		return
 
 	try:
@@ -464,7 +475,7 @@ def insert_ddbb(request,device_id,firsttimestamp,lasttimestamp,
 		prevspeed=curspeed
 
 
-	print "Adding: "+ device_id + " Points: " + str(npoints) + " A("+str(naccelerations) +") "+ " A("+str(nbreaks) +") "+" city: " + city + "("+country+")"
+	print "Adding: "+ device_id + " Points: " + str(npoints) + " A("+str(naccelerations) +") "+ " B("+str(nbreaks) +") "+" city: " + city + "("+country+")"
 	
 	insert = Trips( username=request.user, device_id=device_id,
 		firsttimestamp=firsttimestamp, lasttimestamp=lasttimestamp,
