@@ -58,7 +58,7 @@ class Points(models.Model):
 	hasTrip = models.BooleanField(default=False,db_index=True)
 
 	def __unicode__(self):              # __str__ on Python !=2
-		return str(self.device_id) + " - "+ str(self.timestamp) + " @ " + str(self.latitude) + " : " + str(self.latitude) + " (" +str(self.speed)+")"
+		return str(self.device_id) + " - "+ str(self.timestamp) + " @ " + str(self.latitude) + " : " + str(self.latitude) + " (" +str(self.speed)+")" + " ["+str(self.hasTrip)+"]"
 
 
 

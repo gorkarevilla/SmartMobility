@@ -62,31 +62,24 @@ def upload(request):
 def load_trips(request):
 	print("Getting positions...")
 	gaptime = 120
-	positionsqs = get_positions()
-	if(positionsqs.exists()):
+	pointsqs = get_points()
 
-		positionslist=[]
-		for p in positionsqs.values_list('timestamp','device_id','latitude','longitude','speed'):
-			point = []
-			point.append(p[0])
-			point.append(p[1])
-			point.append(p[2])
-			point.append(p[3])
-			point.append(p[4])
+	# IF is not empty
+	if(pointsqs.exists()):
 
-			positionslist.append(point)
+		ntrips = create_trips(request,pointsqs,gaptime)
 
-		trips = determine_trips(positionslist,gaptime)
-		insert_trips(request,trips)
-		#update_accelerations()
-		messages.success(request,"Trips Generated Correctly")
-		return HttpResponseRedirect('maposm.html')
+		if(ntrips == 0):
+			messages.error(request, 'No trips to be processed!')
+			return HttpResponseRedirect('maposm.html')
+		else:
+			print("Number of trips loaded: "+str(ntrips))
+			messages.success(request,"Trips Generated Correctly")
+			return HttpResponseRedirect('maposm.html')
+
 	else:
 		messages.error(request, 'No points to be processed!')
 		returnHttpResponseRedirect('maposm.html')
-
-
-
 
 
 @require_http_methods(["GET"])
@@ -155,16 +148,16 @@ def save_points(file):
 
 	ntype=0
 	if(firstline[:45] == type1[:45]):
-		print "type1"
+		#print "type1"
 		ntype=1
 		reader = csv.reader(file, delimiter=str(spacer))
 	elif(firstline[:45] == type2[:45]):
-		print "type2"
+		#print "type2"
 		ntype=2
 		reader = csv.reader(file, delimiter=str(','))
 	else:
-		print "notype"
-		print(firstline + " != " + type1 + " OR " + type2)
+		print "ERROR: notype"
+		print(firstline[:45] + " != " + type1[:45] + " OR " + type2[:45])
 		return 0
 	counter = 0
 	
@@ -215,83 +208,101 @@ def save_points(file):
 
 	return counter
 
-# Determine Trips
-# Delete the points and determine the trips by timestamp and device_id
-# input positionslist and gaptime in seconds
-# output:
-# trips = 	[
-#				[tripNumber] [timestamp] [device_id] [latitude] [longitude] [speed]
-# 			]
-def determine_trips(positionslist,gaptime):
 
-	print("Determining Trips...")
+def neighborhood(iterable):
+	iterator = iter(iterable)
+	prev_item = None
+	current_item = next(iterator)  # throws StopIteration if empty.
+	for next_item in iterator:
+		yield (prev_item, current_item, next_item)
+		prev_item = current_item
+		current_item = next_item
+	yield (prev_item, current_item, None)
 
-	#List of trips
-	trips = []
 
-	#Number of trips
-	tripNumber = 0
 
+# from a queryset with points create a list of points for each trip
+# this list will be send to the save_trip function to save in the model each trip (making all the calculations there)
+# output list for each trip:
+# trip = 	[
+#				[id (of the point) ] [timestamp] [device_id] [latitude] [longitude] [speed] 
+#			]
+def create_trips(request,pointsqs,gaptime):
+	print("Creating trips...")
+
+	ntrips = 0
+
+	trip = []
+	
 	#Control if the point is the last point of a list of linked points
 	isLastPoint = 0
-	#NOTE: N^2! can be done with better performace
-	for pos in positionslist:
 
-		try:
-			thispos = pos
-			nextpos = positionslist[positionslist.index(pos)+1] 
-			# print "Pos: "+thispos[0] + " Next: " + nextpos[0]
-			
+	iterator = pointsqs.values_list('id','timestamp','device_id','latitude','longitude','speed').iterator()
 
-			#thisdate = datetime.strptime(thispos[0], '%Y-%m-%d %H:%M:%S')
-			#nextdate = datetime.strptime(nextpos[0], '%Y-%m-%d %H:%M:%S')
-			thisdate = thispos[0]
-			nextdate = nextpos[0]
-			thisdevice = thispos[1]
-			nextdevice = nextpos[1]
+	with transaction.atomic():
 
-			# If the time is close, is part of a trip
-			if (timedifference(nextdate,thisdate)<timedelta(seconds=gaptime) and thisdevice == nextdevice):
+		for prevpoint,thispoint,nextpoint in neighborhood(iterator):
+			try:
 
-				#List of points for trip [tripNumber][timestamp][device_id][latitud][longitude]
-				point = []
-				point.append(tripNumber) # tripNumber
-				point.append(thispos[0]) # timestamp
-				point.append(thispos[1]) # device_id
-				point.append(thispos[2]) # latitude
-				point.append(thispos[3]) # longitude
-				point.append(thispos[4]) # speed
+				#thispoint = p
+				#nextpoint = next(iterator)
+				#nextpoint = iterator[iterator.index(p)+1]
+				#print("This: "+str(thispoint[0]) +" - Next: " +str(nextpoint[0]))
 
-				trips.append(point)
+				thisdate = thispoint[1]
+				nextdate = nextpoint[1]
+				thisdevice = thispoint[2]
+				nextdevice = nextpoint[2]
 
-				isLastPoint=1
+				# If the time is close, is part of a trip
+				if (timedifference(nextdate,thisdate)<timedelta(seconds=gaptime) and thisdevice == nextdevice):
 
-				#print point
-
-			else:
-
-
-				# Include the last point to the trip
-				if(isLastPoint):
-					#List of points for trip [tripNumber][timestamp][device_id][latitude][longitude]
+					#List of points for trip [id][timestamp][device_id][latitud][longitude]
 					point = []
-					point.append(tripNumber) # tripNumber
-					point.append(thispos[0]) # timestamp
-					point.append(thispos[1]) # device_id
-					point.append(thispos[2]) # latitude
-					point.append(thispos[3]) # longitude
-					point.append(thispos[4]) # speed
+					point.append(thispoint[0]) # id (of the point)
+					point.append(thispoint[1]) # timestamp
+					point.append(thispoint[2]) # device_id
+					point.append(thispoint[3]) # latitude
+					point.append(thispoint[4]) # longitude
+					point.append(thispoint[5]) # speed
 
-					trips.append(point)					
+					trip.append(point)
+					set_point_used(thispoint[0])
 
-				tripNumber+=1
-				isLastPoint=0
+					isLastPoint=1
 
-		except IndexError:
-			print "IndexError: " + str(pos)
-			continue
+				else:
 
-	return trips
+
+					# Include the last point to the trip
+					if(isLastPoint):
+						#List of points for trip [id][timestamp][device_id][latitud][longitude]
+						point = []
+						point.append(thispoint[0]) # id (of the point)
+						point.append(thispoint[1]) # timestamp
+						point.append(thispoint[2]) # device_id
+						point.append(thispoint[3]) # latitude
+						point.append(thispoint[4]) # longitude
+						point.append(thispoint[5]) # speed
+
+						trip.append(point)
+						set_point_used(thispoint[0])					
+						ntrips+=1
+						isLastPoint=0
+						save_trip(request,trip)
+						trip=[]
+					
+
+
+			# Last point of the list
+			except StopIteration:
+				continue
+			except TypeError:
+				continue
+
+	return ntrips
+
+
 
 # Returns the deltatime between two datatimes
 def timedifference(t1,t2):
@@ -312,6 +323,14 @@ def delete_points(request):
 	Points.objects.all().delete()
 	print("All Points Deleted!")
 	return HttpResponseRedirect('maposm.html')
+
+
+
+
+def save_trip(request,trip):
+	#print("Saving trip...")
+	return
+
 
 # Save the trips in the model
 # Trips is a list of trips: [tripNumber][timestamp][device_id][latitude][longitude][speed]
@@ -543,8 +562,16 @@ def insert_ddbb(request,device_id,firsttimestamp,lasttimestamp,
 
 # Return all the points that have not been asociated to a trip
 # Ordered by device_id and timestamp
-def get_positions():
+def get_points():
 
-	positions = Points.objects.filter(hasTrip=False).order_by('device_id','timestamp')
+	qs = Points.objects.filter(hasTrip=False).order_by('device_id','timestamp')
 
-	return positions
+	print("Number of points to be analized: "+str(qs.count()))
+
+	return qs
+
+
+# Set true to the hasTrip atribute
+def set_point_used(id):
+
+	Points.objects.filter(id=id).update(hasTrip=True)
