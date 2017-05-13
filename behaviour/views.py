@@ -16,6 +16,7 @@ from datetime import datetime
 from datetime import timedelta
 
 from .models import Trips, Points
+from django.db import transaction
 from django.contrib.gis.geos import LineString, Point
 
 from geopy.geocoders import Nominatim
@@ -40,21 +41,15 @@ def upload(request):
 	if request.method == 'POST':
 		formupload = UploadFileForm(request.POST, request.FILES)
 		if formupload.is_valid():
-			spacer = " "
-			gaptime = 120
-			positions = clean_file(request.FILES['file'],spacer)
-			if (positions == None):
+
+			npoints = save_points(request.FILES['file'])
+			if (npoints == 0):
 				messages.error(request, 'This file can not be processed!')
 				return HttpResponseRedirect('upload.html')
-			trips = determine_trips(positions,gaptime)
-			if (request.user.is_authenticated):
-				insert_trips(request,trips)
-				#update_accelerations()
-				messages.success(request,"File Saved Correctly")
+			else:
+				messages.success(request,"Points Saved Correctly")
 				return HttpResponseRedirect('maposm.html')
-			else :
-				messages.success(request,"File Processed Correctly")
-				return HttpResponseRedirect('maposm.html')
+
 		else:
 			messages.error(request,"Error Uploading the File")
 			return HttpResponseRedirect('upload.html')
@@ -62,6 +57,37 @@ def upload(request):
 		userform = LoginForm()
 		formupload = UploadFileForm()
 		return render(request, 'behaviour/upload.html', {'formupload': formupload, 'userform': userform})
+
+
+def load_trips(request):
+	print("Getting positions...")
+	gaptime = 120
+	positionsqs = get_positions()
+	if(positionsqs.exists()):
+
+		positionslist=[]
+		for p in positionsqs.values_list('timestamp','device_id','latitude','longitude','speed'):
+			point = []
+			point.append(p[0])
+			point.append(p[1])
+			point.append(p[2])
+			point.append(p[3])
+			point.append(p[4])
+
+			positionslist.append(point)
+
+		trips = determine_trips(positionslist,gaptime)
+		insert_trips(request,trips)
+		#update_accelerations()
+		messages.success(request,"Trips Generated Correctly")
+		return HttpResponseRedirect('maposm.html')
+	else:
+		messages.error(request, 'No points to be processed!')
+		returnHttpResponseRedirect('maposm.html')
+
+
+
+
 
 @require_http_methods(["GET"])
 def display(request):
@@ -108,15 +134,15 @@ def downloadfile(request):
 # dateTime device_id id latitude longitude speed
 # 2017-01-24T09:49:24.063Z za0 c3e0b6fcd96d0a329903887ec39cb5835780db17 40.42951587 -3.64513278 0
 #
-#Format output:
-# positions = 	[
-#					[timestamp] 			[device_id]	[latitude]		[longitude] 	[speed]
-#					[2017-01-24 09:49:24] 	[za0] 		[40.4251587] 	[-3.64513278] 	[0]
+#Format in the model:
+# Points = 	[
+#					[timestamp] 			[device_id]	[latitude]		[longitude] 	[speed] [hasTrip]
+#					[2017-01-24 09:49:24] 	[za0] 		[40.4251587] 	[-3.64513278] 	[0]		[False]
 # 				]
 # 
-def clean_file(file,spacer):
-
-	positions = []
+def save_points(file):
+	spacer = " "
+	print("Saving the points of the file...")
 
 	reader = csv.reader(file, delimiter=str(spacer))
 
@@ -125,10 +151,10 @@ def clean_file(file,spacer):
 	type1 = "dateTime device_id id latitude longitude speed\n"
 	type2 = "deviceId,latitude,longitude,dateTime,speed,id\n"
 
-	print("fl:"+firstline+".")
+	#print("fl:"+firstline+".")
 
 	ntype=0
-	if(firstline == type1):
+	if(firstline[:45] == type1[:45]):
 		print "type1"
 		ntype=1
 		reader = csv.reader(file, delimiter=str(spacer))
@@ -139,61 +165,66 @@ def clean_file(file,spacer):
 	else:
 		print "notype"
 		print(firstline + " != " + type1 + " OR " + type2)
-		return
+		return 0
 	counter = 0
-	#for line in file:
-	for line in reader:
-		#Check the line
-		try:
-			if(ntype == 1):
-				point = []
-				# 2017-02-02T19:18:36.063Z
-				timestamp = datetime.strptime(line[0], '%Y-%m-%dT%H:%M:%S.%fZ')
-				point.append(timestamp.strftime("%Y-%m-%d %H:%M:%S"))
-				point.append(line[1]) # device_id
-				point.append(line[3]) # latitude
-				point.append(line[4]) # longitude
-				point.append(line[5]) # speed
+	
+	with transaction.atomic():
+		#for line in file:
+		for line in reader:
+			#Check the line
+			try:
+				if(ntype == 1):
 
-				positions.append(point)
+					# 2017-02-02T19:18:36.063Z timestamp.strftime("%Y-%m-%d %H:%M:%S")
+					timestamp = datetime.strptime(line[0], '%Y-%m-%dT%H:%M:%S.%fZ')
+					device_id = line[1]
+					latitude = line[3]
+					longitude = line[4]
+					speed = line[5]
+					hastrip = False
 
-				
-			elif(ntype == 2):
-				point = []
-				# 2017-02-02 19:18:36
-				timestamp = datetime.strptime(line[3][:19], '%Y-%m-%d %H:%M:%S')
-				point.append(timestamp.strftime("%Y-%m-%d %H:%M:%S"))
-				point.append(line[0]) # device_id
-				point.append(line[1]) # latitude
-				point.append(line[2]) # longitude
-				point.append(line[4]) # speed
+					insert = Points(timestamp=timestamp,device_id=device_id,latitude=latitude,longitude=longitude,speed=speed,hasTrip=hastrip)
+					insert.save()
+					counter+=1
 
-				positions.append(point)
+					
+				elif(ntype == 2):
+					
+					# 2017-02-02 19:18:36 timestamp.strftime("%Y-%m-%d %H:%M:%S")
+					timestamp = datetime.strptime(line[3][:19], '%Y-%m-%d %H:%M:%S')
+					device_id = line[0]
+					latitude = line[1]
+					longitude = line[2]
+					speed = line[4]
+					hastrip = False
 
-				
-			
-		except ValueError:
-			# 2017-01-24
-			#datetime1 = datetime.strptime(line[0], '%Y-%m-%d')
-			print "ValueError: " + str(line)
-			continue
-		except IndexError:
-			print "IndexError: " + str(line)
-			continue
+					insert = Points(timestamp=timestamp,device_id=device_id,latitude=latitude,longitude=longitude,speed=speed,hasTrip=hastrip)
+					insert.save()
+					counter+=1
 
-		counter+=1
-	# print counter
+			except ValueError:
+				# 2017-01-24
+				#datetime1 = datetime.strptime(line[0], '%Y-%m-%d')
+				print "ValueError: " + str(line)
+				continue
+			except IndexError:
+				print "IndexError: " + str(line)
+				continue
 
-	return positions
+	print("Clean Finish, "+str(counter)+" records saved.")
+
+	return counter
 
 # Determine Trips
 # Delete the points and determine the trips by timestamp and device_id
-# input positions and gaptime in seconds
+# input positionslist and gaptime in seconds
 # output:
 # trips = 	[
 #				[tripNumber] [timestamp] [device_id] [latitude] [longitude] [speed]
 # 			]
-def determine_trips(positions,gaptime):
+def determine_trips(positionslist,gaptime):
+
+	print("Determining Trips...")
 
 	#List of trips
 	trips = []
@@ -204,15 +235,18 @@ def determine_trips(positions,gaptime):
 	#Control if the point is the last point of a list of linked points
 	isLastPoint = 0
 	#NOTE: N^2! can be done with better performace
-	for pos in positions:
+	for pos in positionslist:
+
 		try:
 			thispos = pos
-			nextpos = positions[positions.index(pos)+1] 
+			nextpos = positionslist[positionslist.index(pos)+1] 
 			# print "Pos: "+thispos[0] + " Next: " + nextpos[0]
 			
 
-			thisdate = datetime.strptime(thispos[0], '%Y-%m-%d %H:%M:%S')
-			nextdate = datetime.strptime(nextpos[0], '%Y-%m-%d %H:%M:%S')
+			#thisdate = datetime.strptime(thispos[0], '%Y-%m-%d %H:%M:%S')
+			#nextdate = datetime.strptime(nextpos[0], '%Y-%m-%d %H:%M:%S')
+			thisdate = thispos[0]
+			nextdate = nextpos[0]
 			thisdevice = thispos[1]
 			nextdevice = nextpos[1]
 
@@ -267,7 +301,17 @@ def timedifference(t1,t2):
 		return t1-t2
 
 
+# [timestamp, device_id, latitude, longitude, speed]
+def insert_points(positions):
+	with transaction.atomic():
+		for pos in positions:
+			insert = Points(timestamp=pos[0],device_id=pos[1],latitude=pos[2],longitude=pos[3],speed=pos[4])
+			insert.save()
 
+def delete_points(request):
+	Points.objects.all().delete()
+	print("All Points Deleted!")
+	return HttpResponseRedirect('maposm.html')
 
 # Save the trips in the model
 # Trips is a list of trips: [tripNumber][timestamp][device_id][latitude][longitude][speed]
@@ -496,10 +540,11 @@ def insert_ddbb(request,device_id,firsttimestamp,lasttimestamp,
 	#		latitude=completepoint[3],longitude=completepoint[4],speed=completepoint[5]
 	#		).save()
 
-def update_accelerations():
 
-	tripslist = Trips.objects.values_list('id','geom')
-	for tripid, points in tripslist:
-		print tripid
-		print points
+# Return all the points that have not been asociated to a trip
+# Ordered by device_id and timestamp
+def get_positions():
 
+	positions = Points.objects.filter(hasTrip=False).order_by('device_id','timestamp')
+
+	return positions

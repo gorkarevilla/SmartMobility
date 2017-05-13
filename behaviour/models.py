@@ -50,9 +50,27 @@ class Trips(models.Model):
 
 class Points(models.Model):
 	# Regular Fields
-	tripid = models.ForeignKey(
-		Trips,on_delete=models.CASCADE)
+	timestamp = models.DateTimeField()
+	device_id = models.CharField(max_length=4) 
+	latitude = models.FloatField()
+	longitude = models.FloatField()
+	speed = models.FloatField()
+	hasTrip = models.BooleanField(default=False,db_index=True)
 
+	def __unicode__(self):              # __str__ on Python !=2
+		return str(self.device_id) + " - "+ str(self.timestamp) + " @ " + str(self.latitude) + " : " + str(self.latitude) + " (" +str(self.speed)+")"
+
+
+
+class PointsAttribs(models.Model):
+	# Relation Field
+	point = models.OneToOneField(
+        Points,
+        on_delete=models.CASCADE,
+        primary_key=True,
+    )
+
+	# Regular Fields
 	timestamp = models.DateTimeField()
 	device_id = models.CharField(max_length=4) 
 	latitude = models.FloatField()
@@ -60,17 +78,4 @@ class Points(models.Model):
 	speed = models.FloatField()
 
 	def __unicode__(self):              # __str__ on Python !=2
-		return str(self.tripid) + "-> " + str(self.timestamp) + " @ " + str(self.latitude) + " : " + str(self.latitude) + " (" +str(self.speed)+")"
-
-
-#Model with all the accelerations of the points
-class TripAccelerations(models.Model):
-	# Regular Fields
-	tripid = models.ForeignKey(
-		Trips,on_delete=models.CASCADE)
-
-	naccelerations = models.IntegerField(default=None, blank=True, null=True)
-	nbreaks = models.IntegerField(default=None, blank=True, null=True)
-
-	def __unicode__(self):              # __str__ on Python !=2
-		return str(self.tripid) + " : " + str(self.naccelerations) + " - "+ str(self.nbreaks)
+		return str(self.timestamp) + " @ " + str(self.latitude) + " : " + str(self.latitude) + " (" +str(self.speed)+")"
