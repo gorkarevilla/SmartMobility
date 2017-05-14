@@ -80,14 +80,6 @@ def user_logout(request):
 	messages.add_message(request, messages.SUCCESS, 'You have successfully loged out!')
 	return HttpResponseRedirect('/')
 
-
-@require_http_methods(["GET"])
-def clean_DDBB(request):
-	Trips.objects.all().delete()
-	set_all_points_noused()
-	print("All Data Deleted!")
-	return HttpResponseRedirect('maposm.html')
-
 @require_http_methods(["GET"])
 def downloadfile(request):
 	# Create the HttpResponse object with the appropriate CSV header.
@@ -207,19 +199,22 @@ def save_points(file):
 # Load trips from the DDBB
 def load_trips(request):
 	print("Getting positions...")
+
 	gaptime = 120
+	gapdistance = 10000 # in meters
+
 	pointsqs = get_points()
 
 	# IF is not empty
 	if(pointsqs.exists()):
 
-		ntrips = create_trips(request,pointsqs,gaptime)
-
+		ntrips = create_trips(request,pointsqs,gaptime,gapdistance)
+		print("Number of trips loaded: "+str(ntrips))
+		
 		if(ntrips == 0):
 			messages.error(request, 'No trips to be processed!')
 			return HttpResponseRedirect('maposm.html')
 		else:
-			print("Number of trips loaded: "+str(ntrips))
 			messages.success(request,"Trips Generated Correctly")
 			return HttpResponseRedirect('maposm.html')
 
@@ -234,7 +229,7 @@ def load_trips(request):
 # trip = 	[
 #				[id (of the point) ] [timestamp] [device_id] [latitude] [longitude] [speed] 
 #			]
-def create_trips(request,pointsqs,gaptime):
+def create_trips(request,pointsqs,gaptime,gapdistance):
 	print("Creating trips...")
 
 	ntrips = 0
@@ -253,20 +248,17 @@ def create_trips(request,pointsqs,gaptime):
 		for prevpoint,thispoint,nextpoint in neighborhood(iterator):
 			try:
 
-				#thispoint = p
-				#nextpoint = next(iterator)
-				#nextpoint = iterator[iterator.index(p)+1]
-				#print("This: "+str(thispoint[0]) +" - Next: " +str(nextpoint[0]))
-
 				thisdate = thispoint[1]
 				nextdate = nextpoint[1]
 				thisdevice = thispoint[2]
 				nextdevice = nextpoint[2]
 
-				# If the time is close, is part of a trip
-				if (timedifference(nextdate,thisdate)<timedelta(seconds=gaptime) and thisdevice == nextdevice):
+				distance = vincenty( (thispoint[3],thispoint[4]), (nextpoint[3],nextpoint[4]) ).meters
 
-					print(thisdevice +" = "+nextdevice)
+				# If the time is close, is part of a trip
+				if (timedifference(nextdate,thisdate)<timedelta(seconds=gaptime) and thisdevice == nextdevice and distance <=gapdistance):
+
+					#print(thisdevice +" = "+nextdevice)
 					#List of points for trip [id][timestamp][device_id][latitud][longitude]
 					point = []
 					point.append(thispoint[0]) # id (of the point)
@@ -277,7 +269,6 @@ def create_trips(request,pointsqs,gaptime):
 					point.append(thispoint[5]) # speed
 
 					trip.append(point)
-					set_point_used(thispoint[0])
 
 					isLastPoint=1
 
@@ -296,12 +287,13 @@ def create_trips(request,pointsqs,gaptime):
 						point.append(thispoint[5]) # speed
 
 						trip.append(point)
-						set_point_used(thispoint[0])					
-						ntrips+=1
+											
 						isLastPoint=0
 						# Save or print an error
 						if(save_trip(request,trip) == 0):
-							print("ERROR: One Trip can not be saved")
+							print("ERROR: The trip can not be saved")
+						else:
+							ntrips+=1	
 						trip=[]
 					
 
@@ -324,6 +316,7 @@ class geoposition():
 	city = None
 	citytype = None
 	country = None
+	state = None
 
 	def __init__(self, latitude, longitude):
 
@@ -363,6 +356,10 @@ class geoposition():
 			self.country = locjson['address']['country']
 		except KeyError:
 			self.country = "Unknown"
+		try:
+			self.state = locjson['address']['state']
+		except KeyError:
+			self.state = "Unknown"
 
 
 
@@ -415,7 +412,7 @@ def delete_points(request):
 # Save the trip in the model
 # Trip is a list of points: [id][timestamp][device_id][latitude][longitude][speed]
 def save_trip(request,trip):
-	print("Saving trip...")
+	#print("Saving trip...")
 
 	if(len(trip) == 0):
 		print("ERROR: List Empty!")
@@ -486,253 +483,26 @@ def save_trip(request,trip):
 	city = firstposition.city
 	country = firstposition.country
 	citytype = firstposition.citytype
+	state = firstposition.state
 
-	print("Adding: "+ device_id + " Points: " + str(npoints) + " A("+str(naccelerations) +") "+ " B("+str(nbreaks) +") "+" city: " + city + "("+country+")")
+	print("Adding: "+ device_id + " Points: " + str(npoints) + " A("+str(naccelerations) +") "+ " B("+str(nbreaks) +") "+" city: " + city + "("+state+")"+"["+country+"]")
 	
 	insert = Trips( username=username, device_id=device_id,
 		firsttimestamp=firsttimestamp, lasttimestamp=lasttimestamp,
 		firstpointlatitude=firstpointlatitude, firstpointlongitude=firstpointlongitude,
 		lastpointlatitude=lastpointlatitude, lastpointlongitude=firstpointlongitude,
 		geom=LineString(listpoints),
-		city=city, country=country,citytype=citytype,
+		city=city, country=country,citytype=citytype,state=state,
 		duration=duration, distance=distance, velocity=velocity, npoints=npoints,
 		naccelerations=naccelerations,nbreaks=nbreaks
 	)
 
 	insert.save()
+
+	set_points_used(trip)
 
 	return 1
 
-
-
-
-
-# Save the trips in the model
-# Trips is a list of trips: [tripNumber][timestamp][device_id][latitude][longitude][speed]
-# In the model insert:
-# User ¿tripNumber? timestamp device_id latitude longitude
-def insert_trips(request,trips):
-
-	tripNumber = None
-	device_id = None
-	listpoints = []
-	listcompletepoints = []
-	firstpointlatitude = None
-	firstpointlongitude = None
-	lastpointlatitude = None
-	lastpointlongitude = None
-	firsttimestamp = None
-	lasttimestamp = None
-	point = None
-	city = None
-	country = None
-	citytype = None
-
-	for t in trips:
-
-		# print t
-
-		# If is the same tripNumber or
-		# the list is empty add to the list (Is the first element) or
-		if(tripNumber == t[0] or len(listpoints) == 0):
-			# Add the point to the list
-			completepoint = []
-			completepoint.append(t[0]) #tripNumber
-			completepoint.append(t[1]) #timestamp
-			completepoint.append(t[2]) #device_id
-			completepoint.append(t[3]) #latitude
-			completepoint.append(t[4]) #longitude
-			completepoint.append(t[5]) #speed
-			listcompletepoints.append(completepoint)
-			point = Point(float(t[4]),float(t[3]))
-			listpoints.append(point)
-			lasttimestamp = t[1]
-			lastpointlatitude = t[3]
-			lastpointlongitude = t[4]
-
-			if(firstpointlatitude == None):
-				firstpointlatitude = t[3]
-				firstpointlongitude = t[4]
-				device_id = t[2]
-				firsttimestamp = t[1]
-				#Calculated values
-				# City and Country
-				try:
-					geolocator = Nominatim()
-					location = geolocator.reverse(str(firstpointlatitude) + ", "+ str(firstpointlongitude))
-					locjson = json.loads(json.dumps(location.raw))
-					city = locjson['address']['city']
-					citytype="city"
-				except GeocoderTimedOut:
-					print("Error: Geocode time out")
-					continue
-				except KeyError:
-					try:
-						city = locjson['address']['town']
-						citytype="town"
-					except KeyError:
-						try:
-							city = locjson['address']['village']
-							citytype="village"
-						except KeyError:
-							try:
-								city = locjson['address']['neighbourhood']
-								citytype="neighbourhood"
-							except KeyError:
-								try:
-									city = locjson['address']['hamlet']
-									citytype="hamlet"
-								except KeyError:
-									#print(locjson)
-									city = "Unknown"
-									citytype="Unknown"
-				except Exception as e:
-					print("ERROR: " + str(e))
-					continue
-
-				try:
-					country = locjson['address']['country']
-				except KeyError:
-					country = "Unknown"
-		else:
-
-			insert_ddbb(request,device_id,firsttimestamp,lasttimestamp,
-				firstpointlatitude,firstpointlongitude,lastpointlatitude,lastpointlongitude,
-				listpoints,listcompletepoints,city,country,citytype)
-			# Clear the temporary list			
-			listpoints = []
-			listcompletepoints = []
-
-			# Add the point to the list
-			completepoint = []
-			completepoint.append(t[0]) #tripNumber
-			completepoint.append(t[1]) #timestamp
-			completepoint.append(t[2]) #device_id
-			completepoint.append(t[3]) #latitude
-			completepoint.append(t[4]) #longitude
-			completepoint.append(t[5]) #speed
-			listcompletepoints.append(completepoint)
-			point = Point(float(t[4]),float(t[3]))
-			listpoints.append(point)
-			lasttimestamp = t[1]
-			lastpointlatitude = t[3]
-			lastpointlongitude = t[4]
-			firstpointlatitude = t[3]
-			firstpointlongitude = t[4]
-			device_id = t[2]
-			firsttimestamp = t[1]
-			#Calculated values
-			# City and Country
-			try:
-				sleep(2) # after last line in if
-				geolocator = Nominatim()
-				location = geolocator.reverse(str(firstpointlatitude) + ", "+ str(firstpointlongitude))
-				locjson = json.loads(json.dumps(location.raw))
-				city = locjson['address']['city']
-				citytype="city"
-			except GeocoderTimedOut:
-				print("Error: Geocode time out")
-				continue
-			except KeyError:
-				try:
-					city = locjson['address']['town']
-					citytype="town"
-				except KeyError:
-					try:
-						city = locjson['address']['village']
-						citytype="village"
-					except KeyError:
-						try:
-							city = locjson['address']['neighbourhood']
-							citytype="neighbourhood"
-						except KeyError:
-							try:
-								city = locjson['address']['hamlet']
-								citytype="hamlet"
-							except KeyError:
-								#print(locjson)
-								city = "Unknown"
-								citytype="Unknown"
-			except:
-				print("ERROR")
-				continue
-
-			try:
-				country = locjson['address']['country']
-			except KeyError:
-				country = "Unknown"
-
-
-		tripNumber = t[0]
-
-	# Finally insert the remaining list
-	if(len(listpoints)>0):	
-		insert_ddbb(request,device_id,firsttimestamp,lasttimestamp,
-			firstpointlatitude,firstpointlongitude,lastpointlatitude,lastpointlongitude,
-			listpoints,listcompletepoints,city,country,citytype)
-		
-
-def insert_ddbb(request,device_id,firsttimestamp,lasttimestamp,
-	firstpointlatitude,firstpointlongitude,lastpointlatitude,lastpointlongitude,
-	listpoints,listcompletepoints,city,country,citytype):
-
-	duration = timedifference(datetime.strptime(firsttimestamp, '%Y-%m-%d %H:%M:%S'),datetime.strptime(lasttimestamp, '%Y-%m-%d %H:%M:%S')).total_seconds()
-	distance = vincenty( (firstpointlatitude,firstpointlongitude), (lastpointlatitude,lastpointlongitude) ).meters
-	npoints = len(listpoints)
-
-	# no inserts
-	if(npoints < 2):
-		return
-	if(distance == 0 or duration == 0):
-		return
-
-	try:
-		velocity = (3.6)*(distance/duration)
-	except ZeroDivisionError:
-		velocity = 0
-	
-
-	#Determine accelerations
-	gapac = 1.5
-	gapbk = 0.5
-	naccelerations = 0
-	nbreaks = 0
-	prevspeed=float(listcompletepoints[0][5])
-	for completepoint in listcompletepoints:
-
-		curspeed = float(completepoint[5])
-
-		# Lecture error? or first/last point?
-		if(curspeed !=0 and prevspeed !=0):
-			if(prevspeed*gapac < curspeed):
-				naccelerations+=1
-
-			if(prevspeed*gapbk > curspeed):
-				nbreaks+= 1
-
-		prevspeed=curspeed
-
-
-	print "Adding: "+ device_id + " Points: " + str(npoints) + " A("+str(naccelerations) +") "+ " B("+str(nbreaks) +") "+" city: " + city + "("+country+")"
-	
-	insert = Trips( username=request.user, device_id=device_id,
-		firsttimestamp=firsttimestamp, lasttimestamp=lasttimestamp,
-		firstpointlatitude=firstpointlatitude, firstpointlongitude=firstpointlongitude,
-		lastpointlatitude=lastpointlatitude, lastpointlongitude=firstpointlongitude,
-		geom=LineString(listpoints),
-		city=city, country=country,citytype=citytype,
-		duration=duration, distance=distance, velocity=velocity, npoints=npoints,
-		naccelerations=naccelerations,nbreaks=nbreaks
-	)
-
-	insert.save()
-
-
-	# Trips is a list of trips: [tripNumber][timestamp][device_id][latitude][longitude][speed]
-	#for completepoint in listcompletepoints:
-	#	Points(tripid=insert,timestamp=completepoint[1],device_id=completepoint[2],
-	#		latitude=completepoint[3],longitude=completepoint[4],speed=completepoint[5]
-	#		).save()
 
 
 # Return all the points that have not been asociated to a trip
@@ -740,16 +510,26 @@ def insert_ddbb(request,device_id,firsttimestamp,lasttimestamp,
 def get_points():
 
 	qs = Points.objects.filter(hasTrip=False).order_by('device_id','timestamp')
+	#qs = Points.objects.filter(hasTrip=False,device_id="b10").order_by('device_id','timestamp')
 
 	print("Number of points to be analized: "+str(qs.count()))
 
 	return qs
 
 
-# Set true to the hasTrip atribute
-def set_point_used(id):
+# Delete all the trips and set all the points availables to calculate trips
+def clean_DDBB(request):
+	Trips.objects.all().delete()
+	set_all_points_noused()
+	print("All Data Deleted!")
+	return HttpResponseRedirect('maposm.html')
 
-	Points.objects.filter(id=id).update(hasTrip=True)
+# Set true to the hasTrip atribute all the points in the list trips
+# id is value 0
+def set_points_used(trips):
+
+	for p in trips:
+		Points.objects.filter(id=p[0]).update(hasTrip=True)
 
 # Set all the points available for creating trips
 def set_all_points_noused():

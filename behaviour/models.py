@@ -30,8 +30,9 @@ class Trips(models.Model):
 	geom = gismodels.LineStringField() # geom is the Field to be drawn (all the points)
 
 	#Calculated fields
-	city = models.CharField(max_length=20)
-	country = models.CharField(max_length=20)
+	city = models.CharField(max_length=20, default=None, blank=True, null=True)
+	country = models.CharField(max_length=20, default=None, blank=True, null=True)
+	state = models.CharField(max_length=20,default=None, blank=True, null=True)
 	citytype = models.CharField(max_length=20, default=None, blank=True, null=True)
 
 	duration = models.FloatField(default=None, blank=True, null=True)
