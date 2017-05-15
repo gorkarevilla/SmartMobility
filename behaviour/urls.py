@@ -13,8 +13,9 @@ urlpatterns = [
     url(r'^logout', views.user_logout, name='logout'),
     url(r'^loadtrips', views.load_trips, name='loadtrips'),
     url(r'^loadpoints', views.load_points, name='loadpoints'),
-    url(r'^downloadfile', views.downloadfile, name='downloadfile'),
-    url(r'^deletedata', views.clean_DDBB, name='deletedata'),
+    url(r'^downloadtrips', views.download_trips, name='downloadtrips'),
+    url(r'^downloadpoints', views.download_points, name='downloadpoints'),
+    url(r'^deletetrips', views.delete_trips, name='deletetrips'),
     url(r'^deletepoints', views.delete_points, name='deletepoints'),
     url(r'^data.geojson$', GeoJSONLayerView.as_view(model=Trips), name='data'),
 ]

@@ -80,24 +80,7 @@ def user_logout(request):
 	messages.add_message(request, messages.SUCCESS, 'You have successfully loged out!')
 	return HttpResponseRedirect('/')
 
-@require_http_methods(["GET"])
-def downloadfile(request):
-	# Create the HttpResponse object with the appropriate CSV header.
-	response = HttpResponse(content_type='text/csv')
-	response['Content-Disposition'] = 'attachment; filename="data.csv"'
 
-	writer = csv.writer(response)
-
-	tripslist = Trips.objects.values_list('id', 'firsttimestamp', 'city', 'country', 'citytype', 'duration', 'distance', 'velocity', 'npoints', 'naccelerations', 'nbreaks')
-
-	writer.writerow(["tripid", "firsttimestamp", "city", "country", "citytype", "duration", "distance", "velocity", "npoints", "naccelerations", "nbreaks"])	
-	for tripid, firsttimestamp, city, country, citytype, duration, distance, velocity, npoints, naccelerations, nbreaks in tripslist:
-
-		writer.writerow([tripid, firsttimestamp, city.encode('utf-8').strip(), country.encode('utf-8').strip(), citytype, duration, distance, velocity, npoints, naccelerations, nbreaks])
-		
-
-
-	return response
 
 
 
@@ -354,7 +337,43 @@ def load_points(request):
 		messages.error(request, 'No points to be processed!')
 		return HttpResponseRedirect('maposm.html')
 
+# Download a CSV file with all the trips
+def download_trips(request):
+	# Create the HttpResponse object with the appropriate CSV header.
+	response = HttpResponse(content_type='text/csv')
+	response['Content-Disposition'] = 'attachment; filename="trips.csv"'
 
+	writer = csv.writer(response)
+
+	tripslist = Trips.objects.values_list('id', 'firsttimestamp', 'city', 'country', 'citytype', 'duration', 'distance', 'velocity', 'npoints', 'naccelerations', 'nbreaks')
+
+	writer.writerow(["tripid", "firsttimestamp", "city", "country", "citytype", "duration", "distance", "velocity", "npoints", "naccelerations", "nbreaks"])	
+	for tripid, firsttimestamp, city, country, citytype, duration, distance, velocity, npoints, naccelerations, nbreaks in tripslist:
+
+		writer.writerow([tripid, firsttimestamp, city.encode('utf-8').strip(), country.encode('utf-8').strip(), citytype, duration, distance, velocity, npoints, naccelerations, nbreaks])
+		
+
+
+	return response
+
+# Download a CSV file with all the points
+def download_points(request):
+	# Create the HttpResponse object with the appropriate CSV header.
+	response = HttpResponse(content_type='text/csv')
+	response['Content-Disposition'] = 'attachment; filename="points.csv"'
+
+	writer = csv.writer(response)
+
+	pointslist = Points.objects.values_list('timestamp', 'device_id', 'latitude', 'longitude', 'speed', 'pointsattribs')
+
+	writer.writerow(["timestamp", "device_id", "latitude", "longitude", "speed", "dayofweek", "isweekend"])	
+	for timestamp, device_id, latitude, longitude, speed, pointsattribs in pointslist:
+		attribs = PointsAttribs.objects.get(pk=pointsattribs)
+		writer.writerow([timestamp, device_id, latitude, longitude, speed, attribs.dayofweek, attribs.isweekend])
+		
+
+
+	return response
 
 #####
 #####  UTILITY CLASSES
@@ -450,10 +469,7 @@ def insert_points(positions):
 			insert = Points(timestamp=pos[0],device_id=pos[1],latitude=pos[2],longitude=pos[3],speed=pos[4])
 			insert.save()
 
-def delete_points(request):
-	Points.objects.all().delete()
-	print("All Points Deleted!")
-	return HttpResponseRedirect('maposm.html')
+
 
 
 
@@ -566,10 +582,16 @@ def get_points():
 
 
 # Delete all the trips and set all the points availables to calculate trips
-def clean_DDBB(request):
+def delete_trips(request):
 	Trips.objects.all().delete()
 	set_all_points_noused()
 	print("All Data Deleted!")
+	return HttpResponseRedirect('maposm.html')
+
+# Detele all the points in the DDBB
+def delete_points(request):
+	Points.objects.all().delete()
+	print("All Points Deleted!")
 	return HttpResponseRedirect('maposm.html')
 
 # Set true to the hasTrip atribute all the points in the list trips
