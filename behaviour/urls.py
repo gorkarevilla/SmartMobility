@@ -12,6 +12,7 @@ urlpatterns = [
     url(r'^display', views.display, name='display'),
     url(r'^logout', views.user_logout, name='logout'),
     url(r'^loadtrips', views.load_trips, name='loadtrips'),
+    url(r'^loadpoints', views.load_points, name='loadpoints'),
     url(r'^downloadfile', views.downloadfile, name='downloadfile'),
     url(r'^deletedata', views.clean_DDBB, name='deletedata'),
     url(r'^deletepoints', views.delete_points, name='deletepoints'),

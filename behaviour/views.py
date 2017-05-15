@@ -15,7 +15,7 @@ import json
 from datetime import datetime
 from datetime import timedelta
 
-from .models import Trips, Points
+from .models import Trips, Points, PointsAttribs
 from django.db import transaction
 from django.contrib.gis.geos import LineString, Point
 
@@ -305,6 +305,54 @@ def create_trips(request,pointsqs,gaptime,gapdistance):
 				continue
 
 	return ntrips
+
+
+# Populate the table PointsAttribs with all the calculations based on the points directly 
+def load_points(request):
+
+	# Get all the points with no PointsAttribs asocciated
+	qs = Points.objects.filter(pointsattribs = None)
+	
+	# IF is not empty
+	if(qs.exists()):
+
+		with transaction.atomic(): # Everything in the same transaction (faster but more memory)
+
+			npoints = 0
+			for point in qs:
+		
+				#pointid = point.id
+				timestamp = point.timestamp
+				#device_id = point.device_id
+				#latitude = point.latitude
+				#longitude = point.longitude
+				#speed = point.speed
+
+				numberdayofweek = timestamp.weekday() #0 to monday, 6 to sunday
+
+				dayofweek = None
+				isweekend = False
+				if (numberdayofweek == 0): dayofweek = "Monday"  
+				if (numberdayofweek == 1): dayofweek = "Tuesday"  
+				if (numberdayofweek == 2): dayofweek = "Wednesday"  
+				if (numberdayofweek == 3): dayofweek = "Thursday"  
+				if (numberdayofweek == 4): dayofweek = "Friday"  
+				if (numberdayofweek == 5): dayofweek = "Saturday" ; isweekend = True  
+				if (numberdayofweek == 6): dayofweek = "Sunday" ; isweekend = True
+
+				print("Adding Point: "+str(point)+" on: "+dayofweek+ "("+str(isweekend)+")")
+
+				insert = PointsAttribs(point=point,dayofweek=dayofweek,isweekend=isweekend)
+				insert.save()
+				npoints+=1
+
+			print("Number of points loaded: "+npoints)
+			messages.success(request,"Points loaded Correctly")
+			return HttpResponseRedirect('maposm.html')
+
+	else:
+		messages.error(request, 'No points to be processed!')
+		return HttpResponseRedirect('maposm.html')
 
 
 

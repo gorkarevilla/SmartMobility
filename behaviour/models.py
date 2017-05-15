@@ -66,17 +66,15 @@ class Points(models.Model):
 class PointsAttribs(models.Model):
 	# Relation Field
 	point = models.OneToOneField(
-        Points,
-        on_delete=models.CASCADE,
-        primary_key=True,
+		Points,
+		on_delete=models.CASCADE,
+		primary_key=True,
     )
 
 	# Regular Fields
-	timestamp = models.DateTimeField()
-	device_id = models.CharField(max_length=4) 
-	latitude = models.FloatField()
-	longitude = models.FloatField()
-	speed = models.FloatField()
+	dayofweek = models.CharField(max_length=10,default=None, blank=True, null=True)
+	isweekend = models.BooleanField(default=False, blank=True) 
+	
 
 	def __unicode__(self):              # __str__ on Python !=2
-		return str(self.timestamp) + " @ " + str(self.latitude) + " : " + str(self.latitude) + " (" +str(self.speed)+")"
+		return str(self.point) + " @ " + str(self.dayofweek) + " (" +str(self.isweekend)+")"
