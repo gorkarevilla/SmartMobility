@@ -345,12 +345,12 @@ def download_trips(request):
 
 	writer = csv.writer(response)
 
-	tripslist = Trips.objects.values_list('id', 'firsttimestamp', 'city', 'country', 'citytype', 'duration', 'distance', 'velocity', 'npoints', 'naccelerations', 'nbreaks')
+	tripslist = Trips.objects.values_list('id', 'firsttimestamp', 'city', 'state', 'country', 'citytype', 'duration', 'distance', 'velocity', 'npoints', 'naccelerations', 'nbreaks')
 
-	writer.writerow(["tripid", "firsttimestamp", "city", "country", "citytype", "duration", "distance", "velocity", "npoints", "naccelerations", "nbreaks"])	
-	for tripid, firsttimestamp, city, country, citytype, duration, distance, velocity, npoints, naccelerations, nbreaks in tripslist:
+	writer.writerow(["tripid", "firsttimestamp", "city", "state", "country", "citytype", "duration", "distance", "velocity", "npoints", "naccelerations", "nbreaks"])	
+	for tripid, firsttimestamp, city, state, country, citytype, duration, distance, velocity, npoints, naccelerations, nbreaks in tripslist:
 
-		writer.writerow([tripid, firsttimestamp, city.encode('utf-8').strip(), country.encode('utf-8').strip(), citytype, duration, distance, velocity, npoints, naccelerations, nbreaks])
+		writer.writerow([tripid, firsttimestamp, city.encode('utf-8').strip(), state.encode('utf-8').strip(), country.encode('utf-8').strip(), citytype, duration, distance, velocity, npoints, naccelerations, nbreaks])
 		
 
 
