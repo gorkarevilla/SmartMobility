@@ -43,6 +43,9 @@ class Trips(models.Model):
 	naccelerations = models.IntegerField(default=None, blank=True, null=True)
 	nbreaks = models.IntegerField(default=None, blank=True, null=True)
 
+	dayofweek = models.CharField(max_length=10,default=None, blank=True, null=True)
+	isweekend = models.BooleanField(default=False, blank=True) 
+
 	# Returns the string representation of the model.
 	def __unicode__(self):              # __str__ on Python !=2
 		return self.city + " : " + str(self.device_id) + " @ "+ str(self.firsttimestamp) + " - " + str(self.lasttimestamp) + " - " + str(self.distance)

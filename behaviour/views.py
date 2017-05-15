@@ -329,7 +329,7 @@ def load_points(request):
 				insert.save()
 				npoints+=1
 
-			print("Number of points loaded: "+npoints)
+			print("Number of points loaded: "+str(npoints))
 			messages.success(request,"Points loaded Correctly")
 			return HttpResponseRedirect('maposm.html')
 
@@ -397,6 +397,7 @@ class geoposition():
 			self.citytype="city"
 		except GeocoderTimedOut:
 			print("Error: Geocode time out")
+			raise GeocoderTimedOut
 		except KeyError:
 			try:
 				self.city = locjson['address']['town']
@@ -419,6 +420,7 @@ class geoposition():
 							self.citytype="Unknown"
 		except Exception as e:
 			print("ERROR: " + str(e))
+			raise Exception
 		try:
 			self.country = locjson['address']['country']
 		except KeyError:
@@ -542,12 +544,29 @@ def save_trip(request,trip):
 
 		prevspeed=curspeed
 
-
-	firstposition = geoposition(firstpoint[3],firstpoint[4])
+	try:
+		firstposition = geoposition(firstpoint[3],firstpoint[4])
+	except Exception as e:
+		return 0
+	
 	city = firstposition.city
 	country = firstposition.country
 	citytype = firstposition.citytype
 	state = firstposition.state
+
+
+	numberdayofweek = firsttimestamp.weekday() #0 to monday, 6 to sunday
+
+	dayofweek = None
+	isweekend = False
+	if (numberdayofweek == 0): dayofweek = "Monday"  
+	if (numberdayofweek == 1): dayofweek = "Tuesday"  
+	if (numberdayofweek == 2): dayofweek = "Wednesday"  
+	if (numberdayofweek == 3): dayofweek = "Thursday"  
+	if (numberdayofweek == 4): dayofweek = "Friday"  
+	if (numberdayofweek == 5): dayofweek = "Saturday" ; isweekend = True  
+	if (numberdayofweek == 6): dayofweek = "Sunday" ; isweekend = True
+
 
 	print("Adding: "+ device_id + " Points: " + str(npoints) + " A("+str(naccelerations) +") "+ " B("+str(nbreaks) +") "+" city: " + city + "("+state+")"+"["+country+"]")
 	
@@ -558,7 +577,8 @@ def save_trip(request,trip):
 		geom=LineString(listpoints),
 		city=city, country=country,citytype=citytype,state=state,
 		duration=duration, distance=distance, velocity=velocity, npoints=npoints,
-		naccelerations=naccelerations,nbreaks=nbreaks
+		naccelerations=naccelerations,nbreaks=nbreaks,
+		dayofweek=dayofweek,isweekend=isweekend
 	)
 
 	insert.save()
@@ -575,6 +595,10 @@ def get_points():
 
 	qs = Points.objects.filter(hasTrip=False).order_by('device_id','timestamp')
 	#qs = Points.objects.filter(hasTrip=False,device_id="b10").order_by('device_id','timestamp')
+
+	#datefilter = datetime(2017,1,2) 
+	#qs =Points.objects.filter(hasTrip=False,timestamp__date=datefilter).order_by('device_id','timestamp')
+
 
 	print("Number of points to be analized: "+str(qs.count()))
 
