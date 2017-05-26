@@ -17,6 +17,9 @@ class Trips(models.Model):
 
 	firsttimestamp = models.DateTimeField()
 	lasttimestamp = models.DateTimeField()
+	
+	firsttimerange = models.CharField(max_length=20, default=None, blank=True, null=True)
+	lasttimerange = models.CharField(max_length=20, default=None, blank=True, null=True)
 
 	firstpointlatitude = models.FloatField()
 	firstpointlongitude = models.FloatField()
@@ -42,6 +45,8 @@ class Trips(models.Model):
 
 	naccelerations = models.IntegerField(default=None, blank=True, null=True)
 	nbreaks = models.IntegerField(default=None, blank=True, null=True)
+	pnaccelerations = models.FloatField(default=None, blank=True, null=True) #percentage of points
+	pnbreaks = models.FloatField(default=None, blank=True, null=True) #percentage of points
 
 	dayofweek = models.CharField(max_length=10,default=None, blank=True, null=True)
 	isweekend = models.BooleanField(default=False, blank=True) 

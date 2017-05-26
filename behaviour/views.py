@@ -14,6 +14,7 @@ import csv
 import json
 from datetime import datetime
 from datetime import timedelta
+from datetime import time
 
 from .models import Trips, Points, PointsAttribs
 from django.db import transaction
@@ -184,7 +185,7 @@ def load_trips(request):
 	print("Getting positions...")
 
 	gaptime = 120
-	gapdistance = 10000 # in meters
+	gapdistance = 5000 # in meters
 
 	pointsqs = get_points()
 
@@ -272,12 +273,13 @@ def create_trips(request,pointsqs,gaptime,gapdistance):
 						trip.append(point)
 											
 						isLastPoint=0
+						procpoints = save_trip(request,trip)
 						# Save or print an error
-						if(save_trip(request,trip) == 0):
+						if(procpoints == 0):
 							print("ERROR: The trip can not be saved")
 						else:
-							ntrips+=1	
-						trip=[]
+							ntrips+=1
+					trip=[]
 					
 
 
@@ -345,12 +347,12 @@ def download_trips(request):
 
 	writer = csv.writer(response)
 
-	tripslist = Trips.objects.values_list('id', 'firsttimestamp', 'city', 'state', 'country', 'citytype', 'duration', 'distance', 'velocity', 'npoints', 'naccelerations', 'nbreaks')
+	tripslist = Trips.objects.exclude(city="Unknown").exclude(state="Unknown").exclude(country="Unknown").values_list('id', 'firsttimestamp', 'city', 'state', 'country', 'citytype', 'duration', 'distance', 'velocity', 'npoints', 'naccelerations', 'nbreaks','pnaccelerations', 'pnbreaks', 'dayofweek', 'isweekend')
 
-	writer.writerow(["tripid", "firsttimestamp", "city", "state", "country", "citytype", "duration", "distance", "velocity", "npoints", "naccelerations", "nbreaks"])	
-	for tripid, firsttimestamp, city, state, country, citytype, duration, distance, velocity, npoints, naccelerations, nbreaks in tripslist:
+	writer.writerow(["tripid", "firsttimestamp", "city", "state", "country", "citytype", "duration", "distance", "velocity", "npoints", "naccelerations", "nbreaks", "pnaccelerations", "pnbreaks", "dayofweek", "isweekend"])	
+	for tripid, firsttimestamp, city, state, country, citytype, duration, distance, velocity, npoints, naccelerations, nbreaks, pnaccelerations, pnbreaks, dayofweek, isweekend in tripslist:
 
-		writer.writerow([tripid, firsttimestamp, city.encode('utf-8').strip(), state.encode('utf-8').strip(), country.encode('utf-8').strip(), citytype, duration, distance, velocity, npoints, naccelerations, nbreaks])
+		writer.writerow([tripid, firsttimestamp, city.encode('utf-8').strip(), state.encode('utf-8').strip(), country.encode('utf-8').strip(), citytype, duration, distance, velocity, npoints, naccelerations, nbreaks, pnaccelerations, pnbreaks, dayofweek, isweekend])
 		
 
 
@@ -396,7 +398,7 @@ class geoposition():
 			self.city = locjson['address']['city']
 			self.citytype="city"
 		except GeocoderTimedOut:
-			print("Error: Geocode time out")
+			print("ERROR: Geocode time out")
 			raise GeocoderTimedOut
 		except KeyError:
 			try:
@@ -459,6 +461,24 @@ def timedifference(t1,t2):
 	else:
 		return t1-t2
 
+def gettimerange(thedatestamp):
+	#print("Getting timerange...")
+
+	timestamp = thedatestamp.time()
+
+	timerange = None
+	if (timestamp >= time(7,0,0) and timestamp < time(9,0,0)): timerange = "earlymorning" #7-9  
+	if (timestamp >= time(9,0,0) and timestamp < time(12,0,0)): timestamp = "morning" #9-12   
+	if (timestamp >= time(12,0,0) and timestamp < time(15,0,0)): timerange = "earlyafternoon" #12-15  
+	if (timestamp >= time(15,0,0) and timestamp < time(20,0,0)): timerange = "afternoon" #15-20  
+	if (timestamp >= time(20,0,0) and timestamp < time(23,0,0)): timerange = "night" #20-23  
+	if (timestamp >= time(23,0,0) or timestamp < time(7,0,0)): timerange = "latenight" #23-7  
+
+
+	if(timerange == None):
+		return "Unknown"
+
+	return timerange
 
 #####
 #####  DDBB FUNCTIONS
@@ -480,9 +500,10 @@ def insert_points(positions):
 def save_trip(request,trip):
 	#print("Saving trip...")
 
-	if(len(trip) == 0):
-		print("ERROR: List Empty!")
-		return 0
+	#Set minimuns, 
+	minpoints = 10 # greater than 2
+	mindistance = 100 # greater than 0, meters (tries to avoid circular trips)
+	minduration = 30 # greater than 0, seconds
 	
 	# Get the first and last points
 	firstpoint = trip[0]
@@ -497,24 +518,25 @@ def save_trip(request,trip):
 	lastpointlatitude = lastpoint[3]
 	lastpointlongitude = lastpoint[4]
 
-	#Create the Geom (list of points)
-	listpoints = []
-	for p in trip:
-		point = Point(float(p[4]),float(p[3])) # (longitude,latitude)
-		listpoints.append(point)
-
-
-
 	duration = timedifference(firsttimestamp,lasttimestamp).total_seconds()
 	distance = vincenty( (firstpointlatitude,firstpointlongitude), (lastpointlatitude,lastpointlongitude) ).meters
-	npoints = len(listpoints)
+	npoints = len(trip)
 
-	# no inserts
-	if(npoints < 2):
-		print("ERROR: Points less than 2!")
+
+
+	# Empty List
+	if(npoints == 0):
+		print("ERROR: List Empty!")
 		return 0
-	if(distance == 0 or duration == 0):
-		print("ERROR: Distance or duration is 0")
+	# no inserts
+	if(npoints < minpoints):
+		print("ERROR: Points less than "+minpoints)
+		return 0
+	if(distance < mindistance):
+		print("ERROR: Distance is less than "+mindistance)
+		return 0
+	if(duration < minduration):
+		print("ERROR: Duration is less than "+minduration)
 		return 0
 
 	try:
@@ -523,6 +545,16 @@ def save_trip(request,trip):
 		print("ERROR: Zero Division, duration is zero")
 		velocity = 0
 
+	# Calculate the timerange string
+	firsttimerange = gettimerange(firsttimestamp)
+	lasttimerange = gettimerange(lasttimestamp)
+
+
+	#Create the Geom (list of points)
+	listpoints = []
+	for p in trip:
+		point = Point(float(p[4]),float(p[3])) # (longitude,latitude)
+		listpoints.append(point)
 
 	#Determine accelerations
 	gapac = 1.5
@@ -544,7 +576,11 @@ def save_trip(request,trip):
 
 		prevspeed=curspeed
 
+	pnaccelerations = float(float(naccelerations)/float(npoints))
+	pnbreaks = float(float(nbreaks)/float(npoints))
+
 	try:
+		# Get the data of the position, it would take 1 sec to be done
 		firstposition = geoposition(firstpoint[3],firstpoint[4])
 	except Exception as e:
 		return 0
@@ -568,16 +604,18 @@ def save_trip(request,trip):
 	if (numberdayofweek == 6): dayofweek = "Sunday" ; isweekend = True
 
 
-	print("Adding: "+ device_id + " Points: " + str(npoints) + " A("+str(naccelerations) +") "+ " B("+str(nbreaks) +") "+" city: " + city + "("+state+")"+"["+country+"]")
+	print("Adding: "+ device_id + " Points: ""A("+str(pnaccelerations) +") "+ "B("+str(pnbreaks) +") "+" city: " + city + "("+state+")"+"["+country+"]")
 	
 	insert = Trips( username=username, device_id=device_id,
-		firsttimestamp=firsttimestamp, lasttimestamp=lasttimestamp,
+		firsttimestamp=firsttimestamp, lasttimestamp=lasttimestamp, 
+		firsttimerange=firsttimerange, lasttimerange=lasttimerange,
 		firstpointlatitude=firstpointlatitude, firstpointlongitude=firstpointlongitude,
 		lastpointlatitude=lastpointlatitude, lastpointlongitude=firstpointlongitude,
 		geom=LineString(listpoints),
 		city=city, country=country,citytype=citytype,state=state,
 		duration=duration, distance=distance, velocity=velocity, npoints=npoints,
 		naccelerations=naccelerations,nbreaks=nbreaks,
+		pnaccelerations=pnaccelerations,pnbreaks=pnbreaks,
 		dayofweek=dayofweek,isweekend=isweekend
 	)
 
@@ -585,18 +623,21 @@ def save_trip(request,trip):
 
 	set_points_used(trip)
 
-	return 1
+	return npoints
 
 
 
 # Return all the points that have not been asociated to a trip
 # Ordered by device_id and timestamp
 def get_points():
-
+	#ALL
 	qs = Points.objects.filter(hasTrip=False).order_by('device_id','timestamp')
+
+	#By Device_id
 	#qs = Points.objects.filter(hasTrip=False,device_id="b10").order_by('device_id','timestamp')
 
-	#datefilter = datetime(2017,1,2) 
+	#By Date
+	#datefilter = datetime(2017,1,3) 
 	#qs =Points.objects.filter(hasTrip=False,timestamp__date=datefilter).order_by('device_id','timestamp')
 
 
