@@ -71,7 +71,7 @@ def upload(request):
 @require_http_methods(["GET"])
 def display(request):
 	userform = LoginForm()
-	update_accelerations()
+	
 	return render (request, 'behaviour/display.html', {'userform': userform})
 
 
@@ -347,7 +347,7 @@ def download_trips(request):
 
 	writer = csv.writer(response)
 
-	tripslist = Trips.objects.exclude(city="Unknown").exclude(state="Unknown").exclude(country="Unknown").values_list('id', 'firsttimestamp', 'city', 'state', 'country', 'citytype', 'duration', 'distance', 'velocity', 'npoints', 'naccelerations', 'nbreaks','pnaccelerations', 'pnbreaks', 'dayofweek', 'isweekend')
+	tripslist = Trips.objects.exclude(city="Unknown").exclude(state="Unknown").exclude(country="Unknown").filter(firsttimerange="latenight",isweekend="False").values_list('id', 'firsttimestamp', 'city', 'state', 'country', 'citytype', 'duration', 'distance', 'velocity', 'npoints', 'naccelerations', 'nbreaks','pnaccelerations', 'pnbreaks', 'dayofweek', 'isweekend')
 
 	writer.writerow(["tripid", "firsttimestamp", "city", "state", "country", "citytype", "duration", "distance", "velocity", "npoints", "naccelerations", "nbreaks", "pnaccelerations", "pnbreaks", "dayofweek", "isweekend"])	
 	for tripid, firsttimestamp, city, state, country, citytype, duration, distance, velocity, npoints, naccelerations, nbreaks, pnaccelerations, pnbreaks, dayofweek, isweekend in tripslist:
@@ -376,6 +376,20 @@ def download_points(request):
 
 
 	return response
+
+# Update stress of all the trips
+def update_stress(request):
+	print("Updating Stress...")
+	with transaction.atomic():
+		for tid,firsttimerange,lasttimerange,isweekend,city,country,state,pnaccelerations,pnbreaks in Trips.objects.values_list('id','firsttimerange','lasttimerange','isweekend','city','country','state','pnaccelerations','pnbreaks'):
+			stresslevel = calculate_stress(firsttimerange,lasttimerange,isweekend,city,country,state,pnaccelerations,pnbreaks)
+			Trips.objects.filter(id=tid).update(stresslevel=stresslevel)
+
+	messages.success(request, 'Trips Stresslevel updated!')
+	return HttpResponseRedirect('maposm.html')
+
+
+
 
 #####
 #####  UTILITY CLASSES
@@ -479,6 +493,105 @@ def gettimerange(thedatestamp):
 		return "Unknown"
 
 	return timerange
+
+# Determine the stress level of a trip
+# Return a integer as:
+# 	-1: Error
+#	0: Low
+#	50: Normal
+#	100: High
+def calculate_stress(firsttimerange,lasttimerange,isweekend,city,country,state,pnaccelerations,pnbreaks):
+	# [max][min]
+	# pa -> percentage accelerations
+	# pb -> percentage breaks
+
+	### Default values for a empty ddbb, this has been calculated with the training dataset (1week)
+
+	## Laboral
+	# EarlyMorning
+	palem= [0.29 , 0.15]
+	pblem= [0.16 , 0.07]
+	# Morning
+	palm=  [0.29 , 0.15]
+	pblm=  [0.16 , 0.07]
+	# EarlyAfternoon
+	palea= [0.22 , 0.10]
+	pblea= [0.12 , 0.03]
+	# Afternoon
+	pala=  [0.27 , 0.13]
+	pbla=  [0.13 , 0.03]
+	# Night
+	paln=  [0.26 , 0.12]
+	pbln=  [0.12 , 0.02]
+	# LateNight
+	palln= [0.27 , 0.14]
+	pblln= [0.13 , 0.03]
+
+	## Weekend
+	paw=   [0.27 , 0.13]
+	pbw=   [0.13 , 0.02]
+
+
+	# points for stress level
+	level = 50
+
+	learn = False
+	if(learn):
+		#check the values on the DDBB
+		print("Calculating max and min values...")
+
+
+
+	if(isweekend):
+		level-=10 #Bonus for weekend
+		if(pnaccelerations>paw[0]): level+=25
+		if(pnaccelerations<paw[1]): level-=25 
+		if(pnbreaks>pbw[0]): level+=25
+		if(pnbreaks<pbw[1]): level-=25
+	else:
+		if(firsttimerange=="earlymorning"):
+			if(pnaccelerations>palem[0]): level+=25
+			if(pnaccelerations<palem[1]): level-=25 
+			if(pnbreaks>pblem[0]): level+=25
+			if(pnbreaks<pblem[1]): level-=25
+		elif(firsttimerange=="morning"):
+			if(pnaccelerations>palm[0]): level+=25
+			if(pnaccelerations<palm[1]): level-=25 
+			if(pnbreaks>pblm[0]): level+=25
+			if(pnbreaks<pblm[1]): level-=25
+		elif(firsttimerange=="earlyafternoon"):
+			if(pnaccelerations>palea[0]): level+=25
+			if(pnaccelerations<palea[1]): level-=25 
+			if(pnbreaks>pblea[0]): level+=25
+			if(pnbreaks<pblea[1]): level-=25
+		elif(firsttimerange=="afternoon"):
+			if(pnaccelerations>pala[0]): level+=25
+			if(pnaccelerations<pala[1]): level-=25 
+			if(pnbreaks>pbla[0]): level+=25
+			if(pnbreaks<pbla[1]): level-=25
+		elif(firsttimerange=="night"):
+			if(pnaccelerations>paln[0]): level+=25
+			if(pnaccelerations<paln[1]): level-=25 
+			if(pnbreaks>pbln[0]): level+=25
+			if(pnbreaks<pbln[1]): level-=25
+		elif(firsttimerange=="latenight"):
+			if(pnaccelerations>palln[0]): level+=25
+			if(pnaccelerations<palln[1]): level-=25 
+			if(pnbreaks>pblln[0]): level+=25
+			if(pnaccelerations<pblln[1]): level-=25
+
+
+	if(level<=25):
+		print("Level: Low") 
+		return 0
+	elif(level>25 and level<=75): 
+		print("Level: Medium") 
+		return 50
+	elif(level>75): 
+		print("Level: High") 
+		return 100
+	else: 
+		return -1
 
 #####
 #####  DDBB FUNCTIONS
@@ -603,6 +716,7 @@ def save_trip(request,trip):
 	if (numberdayofweek == 5): dayofweek = "Saturday" ; isweekend = True  
 	if (numberdayofweek == 6): dayofweek = "Sunday" ; isweekend = True
 
+	stresslevel = calculate_stress(firsttimerange,lasttimerange,isweekend,city,country,state,pnaccelerations,pnbreaks)
 
 	print("Adding: "+ device_id + " Points: ""A("+str(pnaccelerations) +") "+ "B("+str(pnbreaks) +") "+" city: " + city + "("+state+")"+"["+country+"]")
 	
@@ -616,7 +730,8 @@ def save_trip(request,trip):
 		duration=duration, distance=distance, velocity=velocity, npoints=npoints,
 		naccelerations=naccelerations,nbreaks=nbreaks,
 		pnaccelerations=pnaccelerations,pnbreaks=pnbreaks,
-		dayofweek=dayofweek,isweekend=isweekend
+		dayofweek=dayofweek,isweekend=isweekend,
+		stresslevel=stresslevel
 	)
 
 	insert.save()
