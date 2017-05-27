@@ -16,8 +16,9 @@ from datetime import datetime
 from datetime import timedelta
 from datetime import time
 
-from .models import Trips, Points, PointsAttribs
-from django.db import transaction
+from .models import Trips, Points, PointsAttribs, StressCountry, StressState, StressCity
+from django.db import transaction, IntegrityError
+from django.db.models import Count, Avg, F
 from django.contrib.gis.geos import LineString, Point
 
 from geopy.geocoders import Nominatim
@@ -71,7 +72,9 @@ def upload(request):
 @require_http_methods(["GET"])
 def display(request):
 	userform = LoginForm()
-	
+	set_stress_by_country()
+	set_stress_by_state()
+	set_stress_by_city()
 	return render (request, 'behaviour/display.html', {'userform': userform})
 
 
@@ -539,6 +542,7 @@ def calculate_stress(firsttimerange,lasttimerange,isweekend,city,country,state,p
 	if(learn):
 		#check the values on the DDBB
 		print("Calculating max and min values...")
+		Trips.objects.all().aggregate(Avg('pnaccelerations'))
 
 
 
@@ -784,3 +788,112 @@ def set_points_used(trips):
 # Set all the points available for creating trips
 def set_all_points_noused():
 	Points.objects.all().update(hasTrip=False)
+
+
+
+# Updates the table with the values 
+def set_stress_by_country():
+	qs = Trips.objects.values('country','stresslevel').order_by().annotate(Count('stresslevel'))
+	
+	#Clean
+	StressCountry.objects.all().delete()
+
+	#Insert all
+	with transaction.atomic():
+		for thetuple in qs:
+			country = thetuple['country']
+			stresslevel = thetuple['stresslevel']
+			count = thetuple['stresslevel__count']
+			print(str(thetuple))
+			if(stresslevel == "0"):
+				StressCountry.objects.update_or_create(country=country,defaults={'low':count})
+			elif(stresslevel == "50"):
+				StressCountry.objects.update_or_create(country=country,defaults={'mid':count})
+			elif(stresslevel == "100"):
+				StressCountry.objects.update_or_create(country=country,defaults={'high':count})
+			else:
+				print("ERROR: Stresslevel is not valid: "+stresslevel)
+
+	return 1
+
+# Updates the table with the values 
+def set_stress_by_state():
+	qs = Trips.objects.values('state','stresslevel').order_by().annotate(Count('stresslevel'))
+	
+	#Clean
+	StressState.objects.all().delete()
+
+	#Insert all
+	with transaction.atomic():
+		for thetuple in qs:
+			state = thetuple['state']
+			stresslevel = thetuple['stresslevel']
+			count = thetuple['stresslevel__count']
+			print(str(thetuple))
+			if(stresslevel == "0"):
+				StressState.objects.update_or_create(state=state,defaults={'low':count})
+			elif(stresslevel == "50"):
+				StressState.objects.update_or_create(state=state,defaults={'mid':count})
+			elif(stresslevel == "100"):
+				StressState.objects.update_or_create(state=state,defaults={'high':count})
+			else:
+				print("ERROR: Stresslevel is not valid: "+stresslevel)
+
+	return 1
+
+# Updates the table with the values 
+def set_stress_by_city():
+	qs = Trips.objects.values('city','stresslevel').order_by().annotate(Count('stresslevel'))
+	
+	#Clean
+	StressCity.objects.all().delete()
+
+	#Insert all
+	with transaction.atomic():
+		for thetuple in qs:
+			city = thetuple['city']
+			stresslevel = thetuple['stresslevel']
+			count = thetuple['stresslevel__count']
+			print(str(thetuple))
+			if(stresslevel == "0"):
+				StressCity.objects.update_or_create(city=city,defaults={'low':count})
+			elif(stresslevel == "50"):
+				StressCity.objects.update_or_create(city=city,defaults={'mid':count})
+			elif(stresslevel == "100"):
+				StressCity.objects.update_or_create(city=city,defaults={'high':count})
+			else:
+				print("ERROR: Stresslevel is not valid: "+stresslevel)
+
+	return 1
+
+
+#Returns [high][mid][low] stress counts for that country
+def get_stress_by_country():
+	lowqs = Trips.objects.filter(stresslevel=0).values_list('country').annotate(stresslevel=Count('stresslevel')).order_by('country')
+	midqs = Trips.objects.filter(stresslevel=50).values_list('country').annotate(stresslevel=Count('stresslevel')).order_by('country')
+	highqs = Trips.objects.filter(stresslevel=100).values_list('country').annotate(stresslevel=Count('stresslevel')).order_by('country')
+	#print("High for "+ qs[0].country+": "+qs[0].high)
+	print("Low for "+ str(lowqs))
+	print("Mid for "+ str(midqs))
+	print("High for "+ str(highqs))
+
+	countrylist = []
+	for country, stresslevel in lowqs:
+		print("C: "+country)
+		print("S: "+str(stresslevel))
+		countrylist.append([country, stresslevel])
+
+	print(str(countrylist))
+
+	return lowqs
+
+
+# Returns list of states with the stress level as: [state][high][mid][low]
+# Output: = {
+# 				[ MXDC, 20, 100, 8 ]
+# 				[ Colima, 1, 8, 10 ]
+# 			}
+#         
+def get_stress_by_state():
+	
+	return StressState.objects.all.values_list('state','high','mid','low')

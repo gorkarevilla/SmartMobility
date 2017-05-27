@@ -88,3 +88,34 @@ class PointsAttribs(models.Model):
 
 	def __unicode__(self):              # __str__ on Python !=2
 		return str(self.point) + " @ " + str(self.dayofweek) + " (" +str(self.isweekend)+")"
+
+class StressCountry(models.Model):
+	country = models.CharField(max_length=30,primary_key=True)	
+
+	high = models.IntegerField(default=0)
+	mid = models.IntegerField(default=0)
+	low = models.IntegerField(default=0)
+
+	def __unicode__(self):              # __str__ on Python !=2
+		return " @ " + str(self.low) + ", "+ str(self.mid) + ", "+ str(self.high)
+
+class StressState(models.Model):
+	state = models.CharField(max_length=30,primary_key=True)	
+	
+	high = models.IntegerField(default=0)
+	mid = models.IntegerField(default=0)
+	low = models.IntegerField(default=0)
+
+	def __unicode__(self):              # __str__ on Python !=2
+		return " @ " + str(self.low) + ", "+ str(self.mid) + ", "+ str(self.high)
+
+class StressCity(models.Model):
+	city = models.CharField(max_length=30,primary_key=True)	
+	
+	high = models.IntegerField(default=0)
+	mid = models.IntegerField(default=0)
+	low = models.IntegerField(default=0)
+
+	def __unicode__(self):              # __str__ on Python !=2
+		return " @ " + str(self.low) + ", "+ str(self.mid) + ", "+ str(self.high)
+
