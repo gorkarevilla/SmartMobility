@@ -74,9 +74,11 @@ def upload(request):
 @require_http_methods(["GET"])
 def display(request):
 	userform = LoginForm()
-	set_stress_by_country()
-	set_stress_by_state()
-	set_stress_by_city()
+	updatestress=False
+	if(updatestress):
+		set_stress_by_country()
+		set_stress_by_state()
+		set_stress_by_city()
 	countrychart = get_stress_chart("country")
 	statechart = get_stress_chart("state")
 	citychart = get_stress_chart("city")
@@ -603,7 +605,7 @@ def calculate_stress(firsttimerange,lasttimerange,isweekend,city,country,state,p
 		return -1
 
 ####
-####  CHARTS FUNCIONTS
+####  CHARTS FUNCTIONS
 ####
 def get_stress_chart(type):
 
@@ -613,19 +615,19 @@ def get_stress_chart(type):
 	xaxistext = None
 	if(type=="country"):
 		print("Drawing Country chart...")
-		source = StressCountry.objects.all()
+		source = StressCountry.objects.all().order_by('-high','-mid','-low')[:10]
 		name = 'country'
 		titletext = 'Stress by Country'
 		xaxistext = 'Country'
 	elif(type=="state"):
 		print("Drawing State chart...")
-		source = StressState.objects.all()
+		source = StressState.objects.all().order_by('-high','-mid','-low')[:10]
 		name = 'state'
 		titletext = 'Stress by State'
 		xaxistext = 'State'
 	elif(type=="city"):
 		print("Drawing City chart...")
-		source = StressCity.objects.all()
+		source = StressCity.objects.all().order_by('-high','-mid','-low')[:10]
 		name = 'city'
 		titletext = 'Stress by City'
 		xaxistext = 'City'
@@ -651,20 +653,31 @@ def get_stress_chart(type):
 			datasource = countrydata,
 			series_options =
 			[{'options':{
-				'type': 'line',
-				'stacking': False},
+				'type': 'bar',
+				'colors': ['#ff0000', '#ffff00', '#00ff00', '#f7a35c', '#8085e9', 
+   '#f15c80', '#e4d354', '#2b908f', '#f45b5b', '#91e8e1'],
+   				'colorByPoint': False,
+   				
+				'stacking': 'percent'
+				},
+
 				'terms':{
 					name: [
 					'high',
 					'mid',
 					'low']
-				}}],
+				}
+			}],
 			chart_options =
 				{'title': {
 					'text': titletext},
 				'xAxis': {
 					'title': {
-						'text': xaxistext }}})
+						'text': xaxistext }},
+				'yAxis': {
+					'title': {
+						'text': "Percentage" }}
+				})
 
 	#Step 3: Send the chart object
 	return cht

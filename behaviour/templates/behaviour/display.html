@@ -1,6 +1,6 @@
 {% extends "base.html" %}
-
-
+{% load staticfiles %}
+{% load static %}
 
 {% block links %}
 
@@ -12,6 +12,11 @@
 <script src="https://code.highcharts.com/highcharts.src.js"></script>
 <!-- END HIGHCHARTS -->
 
+<!-- CSS for highcharts -->
+<link rel="stylesheet" href="{%  static 'css/highcharts.css' %}"/>
+<!-- <link rel="stylesheet" href="{%  static 'css/highcharts.scss' %}"> -->
+<!-- END CSS highcharts -->
+
 {% load chartit %}
 {{ chart_list|load_charts:"countrychart,statechart,citychart" }}
 
@@ -22,20 +27,20 @@
 {% block content %}
 
 <div class="container">
-
-    <div class="col-md-4">
-    	<h2>Stress by Country</h2>
-    
-        <div id="countrychart"> Country Chart goes here </div>
+    <h2>Top 10 highest Stress</h2>
+    <div class="col-md-6">
+    	
+        <div id="countrychart"> Country Chart</div>
 
     </div>
-    <div class="col-md-4">
-    	<h2>Stress by State</h2>
-        <div id="statechart"> State Chart goes here </div>
+    <div class="col-md-6">
+    	
+        <div id="statechart" > State Chart</div>
 	</div>
-    <div class="col-md-4">
-        <h2>Stress by City</h2>
-        <div id="citychart"> City Chart goes here </div>
+
+    <div class="row">
+        
+        <div id="citychart"> City Chart</div>
     </div>
     
 </div>
