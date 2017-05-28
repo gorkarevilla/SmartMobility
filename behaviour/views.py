@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
-from django.shortcuts import render
+from django.shortcuts import render, render_to_response
 from django.http import HttpResponse
 from django.http import HttpResponseRedirect
 from django.contrib import messages
@@ -25,6 +25,8 @@ from geopy.geocoders import Nominatim
 from time import sleep
 from geopy.exc import GeocoderTimedOut
 from geopy.distance import vincenty
+
+from chartit import DataPool, Chart
 
 # Create your views here.
 
@@ -75,7 +77,10 @@ def display(request):
 	set_stress_by_country()
 	set_stress_by_state()
 	set_stress_by_city()
-	return render (request, 'behaviour/display.html', {'userform': userform})
+	countrychart = get_stress_chart("country")
+	statechart = get_stress_chart("state")
+	citychart = get_stress_chart("city")
+	return render (request, 'behaviour/display.html', {'userform': userform, 'chart_list': [ countrychart, statechart, citychart ]})
 
 
 @require_http_methods(["GET"])
@@ -596,6 +601,73 @@ def calculate_stress(firsttimerange,lasttimerange,isweekend,city,country,state,p
 		return 100
 	else: 
 		return -1
+
+####
+####  CHARTS FUNCIONTS
+####
+def get_stress_chart(type):
+
+	source = None
+	name = None
+	titletext = None
+	xaxistext = None
+	if(type=="country"):
+		print("Drawing Country chart...")
+		source = StressCountry.objects.all()
+		name = 'country'
+		titletext = 'Stress by Country'
+		xaxistext = 'Country'
+	elif(type=="state"):
+		print("Drawing State chart...")
+		source = StressState.objects.all()
+		name = 'state'
+		titletext = 'Stress by State'
+		xaxistext = 'State'
+	elif(type=="city"):
+		print("Drawing City chart...")
+		source = StressCity.objects.all()
+		name = 'city'
+		titletext = 'Stress by City'
+		xaxistext = 'City'
+	else:
+		print("ERROR: Invalid type of chart")
+		return 0
+
+	#Step 1: Create a DataPool with the data we want to retrieve.
+	countrydata = \
+		DataPool(
+			series=
+			[{'options': {
+				'source': source },
+				'terms': [
+				name,
+				'high',
+				'mid',
+				'low']}
+			])
+
+	#Step 2: Create the Chart object
+	cht = Chart(
+			datasource = countrydata,
+			series_options =
+			[{'options':{
+				'type': 'line',
+				'stacking': False},
+				'terms':{
+					name: [
+					'high',
+					'mid',
+					'low']
+				}}],
+			chart_options =
+				{'title': {
+					'text': titletext},
+				'xAxis': {
+					'title': {
+						'text': xaxistext }}})
+
+	#Step 3: Send the chart object
+	return cht
 
 #####
 #####  DDBB FUNCTIONS

@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     'behaviour',
     'crispy_forms',
     'leaflet',
+    'chartit',
     'bootstrap3',
     'geopy'
 ]

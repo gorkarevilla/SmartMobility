@@ -1,28 +1,44 @@
 {% extends "base.html" %}
 
+
+
+{% block links %}
+
+<!-- JQUERY -->
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+<!-- END JQUERY -->
+
+<!-- HIGHCHARTS -->
+<script src="https://code.highcharts.com/highcharts.src.js"></script>
+<!-- END HIGHCHARTS -->
+
+{% load chartit %}
+{{ chart_list|load_charts:"countrychart,statechart,citychart" }}
+
+
+{% endblock %}
+
+
 {% block content %}
 
 <div class="container">
 
     <div class="col-md-4">
     	<h2>Stress by Country</h2>
-    	<p>High: </p>
-        <p>Normal: </p>
-        <p>Low: </p>
+    
+        <div id="countrychart"> Country Chart goes here </div>
+
     </div>
     <div class="col-md-4">
     	<h2>Stress by State</h2>
-    	<p>High: </p>
-        <p>Normal: </p>
-        <p>Low: </p>
+        <div id="statechart"> State Chart goes here </div>
 	</div>
     <div class="col-md-4">
         <h2>Stress by City</h2>
-        <p>High: </p>
-        <p>Normal: </p>
-        <p>Low: </p>
+        <div id="citychart"> City Chart goes here </div>
     </div>
     
 </div>
+</br></br></br>
 
 {% endblock %}
