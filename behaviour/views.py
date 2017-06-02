@@ -504,6 +504,15 @@ def gettimerange(thedatestamp):
 
 	return timerange
 
+def percentage_point_value(origin,maxp,minp):
+	percentage = 0.0
+	try:
+		percentage = (origin-minp)/(maxp-minp)
+	except ZeroDivisionError:
+		percentage = 0
+	print("point: "+str(origin)+", max: "+str(maxp)+", min: "+str(minp)+": "+str(percentage))
+
+	return percentage
 # Determine the stress level of a trip
 # Return a integer as:
 # 	-1: Error
@@ -511,6 +520,15 @@ def gettimerange(thedatestamp):
 #	50: Normal
 #	100: High
 def calculate_stress(firsttimerange,lasttimerange,isweekend,city,country,state,pnaccelerations,pnbreaks):
+	# Influence of types:
+	# pai -> percentage accelerations influence
+	# pbi -> percentage accelerations influence
+	paimax = 25
+	pbimax = 25
+	paimin = 25
+	pbimin = 25
+
+
 	# [max][min]
 	# pa -> percentage accelerations
 	# pb -> percentage breaks
@@ -555,51 +573,79 @@ def calculate_stress(firsttimerange,lasttimerange,isweekend,city,country,state,p
 
 	if(isweekend):
 		level-=10 #Bonus for weekend
-		if(pnaccelerations>paw[0]): level+=25
-		if(pnaccelerations<paw[1]): level-=25 
-		if(pnbreaks>pbw[0]): level+=25
-		if(pnbreaks<pbw[1]): level-=25
+		if(pnaccelerations>paw[0]):
+			level+=percentage_point_value(pnaccelerations,1,paw[0])*paimax
+		if(pnaccelerations<paw[1]): 
+			level-=percentage_point_value(pnaccelerations,paw[1],0)*paimin
+		if(pnbreaks>pbw[0]): 
+			level+=percentage_point_value(pnaccelerations,1,pbw[0])*pbimax
+		if(pnbreaks<pbw[1]): 
+			level-=percentage_point_value(pnaccelerations,pbw[1],0)*pbimin
 	else:
 		if(firsttimerange=="earlymorning"):
-			if(pnaccelerations>palem[0]): level+=25
-			if(pnaccelerations<palem[1]): level-=25 
-			if(pnbreaks>pblem[0]): level+=25
-			if(pnbreaks<pblem[1]): level-=25
+			if(pnaccelerations>palem[0]): 
+				level+=percentage_point_value(pnaccelerations,1,palem[0])*paimax
+			if(pnaccelerations<palem[1]):
+				level-=percentage_point_value(pnaccelerations,palem[1],0)*paimin
+			if(pnbreaks>pblem[0]): 
+				level+=percentage_point_value(pnaccelerations,1,pblem[0])*pbimax
+			if(pnbreaks<pblem[1]): 
+				level-=percentage_point_value(pnaccelerations,pblem[1],0)*pbimin
 		elif(firsttimerange=="morning"):
-			if(pnaccelerations>palm[0]): level+=25
-			if(pnaccelerations<palm[1]): level-=25 
-			if(pnbreaks>pblm[0]): level+=25
-			if(pnbreaks<pblm[1]): level-=25
+			if(pnaccelerations>palm[0]): 
+				level+=percentage_point_value(pnaccelerations,1,palm[0])*paimax
+			if(pnaccelerations<palm[1]): 
+				level-=percentage_point_value(pnaccelerations,palm[1],0)*paimin
+			if(pnbreaks>pblm[0]): 
+				level+=percentage_point_value(pnaccelerations,1,pblm[0])*pbimax
+			if(pnbreaks<pblm[1]): 
+				level-=percentage_point_value(pnaccelerations,pblm[1],0)*pbimin
 		elif(firsttimerange=="earlyafternoon"):
-			if(pnaccelerations>palea[0]): level+=25
-			if(pnaccelerations<palea[1]): level-=25 
-			if(pnbreaks>pblea[0]): level+=25
-			if(pnbreaks<pblea[1]): level-=25
+			if(pnaccelerations>palea[0]): 
+				level+=percentage_point_value(pnaccelerations,1,palea[0])*paimax
+			if(pnaccelerations<palea[1]): 
+				level-=percentage_point_value(pnaccelerations,palea[1],0)*paimin 
+			if(pnbreaks>pblea[0]): 
+				level+=percentage_point_value(pnaccelerations,1,pblea[0])*pbimax
+			if(pnbreaks<pblea[1]): 
+				level-=percentage_point_value(pnaccelerations,pblea[1],0)*pbimin
 		elif(firsttimerange=="afternoon"):
-			if(pnaccelerations>pala[0]): level+=25
-			if(pnaccelerations<pala[1]): level-=25 
-			if(pnbreaks>pbla[0]): level+=25
-			if(pnbreaks<pbla[1]): level-=25
+			if(pnaccelerations>pala[0]): 
+				level+=percentage_point_value(pnaccelerations,1,pala[0])*paimax
+			if(pnaccelerations<pala[1]): 
+				level-=percentage_point_value(pnaccelerations,pala[1],0)*paimin 
+			if(pnbreaks>pbla[0]): 
+				level+=percentage_point_value(pnaccelerations,1,pbla[0])*pbimax
+			if(pnbreaks<pbla[1]): 
+				level-=percentage_point_value(pnaccelerations,pbla[1],0)*pbimin
 		elif(firsttimerange=="night"):
-			if(pnaccelerations>paln[0]): level+=25
-			if(pnaccelerations<paln[1]): level-=25 
-			if(pnbreaks>pbln[0]): level+=25
-			if(pnbreaks<pbln[1]): level-=25
+			if(pnaccelerations>paln[0]): 
+				level+=percentage_point_value(pnaccelerations,1,paln[0])*paimax
+			if(pnaccelerations<paln[1]): 
+				level-=percentage_point_value(pnaccelerations,paln[1],0)*paimin  
+			if(pnbreaks>pbln[0]): 
+				level+=percentage_point_value(pnaccelerations,1,pbln[0])*pbimax
+			if(pnbreaks<pbln[1]): 
+				level-=percentage_point_value(pnaccelerations,pbln[1],0)*pbimin
 		elif(firsttimerange=="latenight"):
-			if(pnaccelerations>palln[0]): level+=25
-			if(pnaccelerations<palln[1]): level-=25 
-			if(pnbreaks>pblln[0]): level+=25
-			if(pnaccelerations<pblln[1]): level-=25
+			if(pnaccelerations>palln[0]): 
+				level+=percentage_point_value(pnaccelerations,1,palln[0])*paimax
+			if(pnaccelerations<palln[1]): 
+				level-=percentage_point_value(pnaccelerations,palln[1],0)*paimin  
+			if(pnbreaks>pblln[0]): 
+				level+=percentage_point_value(pnaccelerations,1,pblln[0])*pbimax
+			if(pnaccelerations<pblln[1]): 
+				level-=percentage_point_value(pnaccelerations,pblln[1],0)*pbimin
 
 
-	if(level<=25):
-		print("Level: Low") 
+	if(level<33):
+		print("Level "+str(level)+": Low") 
 		return 0
-	elif(level>25 and level<=75): 
-		print("Level: Medium") 
+	elif(level>=33 and level<=66): 
+		print("Level "+str(level)+": Medium") 
 		return 50
-	elif(level>75): 
-		print("Level: High") 
+	elif(level>66): 
+		print("Level "+str(level)+": High") 
 		return 100
 	else: 
 		return -1
@@ -615,19 +661,19 @@ def get_stress_chart(type):
 	xaxistext = None
 	if(type=="country"):
 		print("Drawing Country chart...")
-		source = StressCountry.objects.all().order_by('-high','-mid','-low')[:10]
+		source = StressCountry.objects.all().order_by('-high','-mid','-low')[:10] #top 10 order by more high
 		name = 'country'
 		titletext = 'Stress by Country'
 		xaxistext = 'Country'
 	elif(type=="state"):
 		print("Drawing State chart...")
-		source = StressState.objects.all().order_by('-high','-mid','-low')[:10]
+		source = StressState.objects.all().order_by('-high','-mid','-low')[:10] #top 10 order by more high
 		name = 'state'
 		titletext = 'Stress by State'
 		xaxistext = 'State'
 	elif(type=="city"):
 		print("Drawing City chart...")
-		source = StressCity.objects.all().order_by('-high','-mid','-low')[:10]
+		source = StressCity.objects.all().order_by('-high','-mid','-low')[:10] #top 10 order by more high
 		name = 'city'
 		titletext = 'Stress by City'
 		xaxistext = 'City'
