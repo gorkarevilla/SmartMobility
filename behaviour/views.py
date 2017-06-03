@@ -858,7 +858,7 @@ def save_trip(request,trip):
 
 	stresslevel = calculate_stress(firsttimerange,lasttimerange,isweekend,city,country,state,pnaccelerations,pnbreaks)
 
-	print("Adding: "+ device_id + " Points: ""A("+str(pnaccelerations) +") "+ "B("+str(pnbreaks) +") "+" city: " + city + "("+state+")"+"["+country+"]")
+	print("Adding: "+ str(device_id) + " Points: ""A("+str(pnaccelerations) +") "+ "B("+str(pnbreaks) +")")
 	
 	insert = Trips( username=username, device_id=device_id,
 		firsttimestamp=firsttimestamp, lasttimestamp=lasttimestamp, 
@@ -905,6 +905,9 @@ def get_points():
 def delete_trips(request):
 	Trips.objects.all().delete()
 	set_all_points_noused()
+	StressCountry.objects.all().delete()
+	StressState.objects.all().delete()
+	StressCity.objects.all().delete()
 	print("All Data Deleted!")
 	return HttpResponseRedirect('maposm.html')
 
