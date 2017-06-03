@@ -74,7 +74,7 @@ def upload(request):
 @require_http_methods(["GET"])
 def display(request):
 	userform = LoginForm()
-	updatestress=False
+	updatestress=True
 	if(updatestress):
 		set_stress_by_country()
 		set_stress_by_state()
@@ -396,7 +396,7 @@ def update_stress(request):
 			Trips.objects.filter(id=tid).update(stresslevel=stresslevel)
 
 	messages.success(request, 'Trips Stresslevel updated!')
-	return HttpResponseRedirect('maposm.html')
+	return HttpResponseRedirect('display.html')
 
 
 
@@ -507,7 +507,10 @@ def gettimerange(thedatestamp):
 def percentage_point_value(origin,maxp,minp):
 	percentage = 0.0
 	try:
-		percentage = (origin-minp)/(maxp-minp)
+		if(origin<=maxp and origin >=minp):
+			percentage = (origin-minp)/(maxp-minp)
+		else:
+			return 1
 	except ZeroDivisionError:
 		percentage = 0
 	print("point: "+str(origin)+", max: "+str(maxp)+", min: "+str(minp)+": "+str(percentage))
@@ -527,6 +530,9 @@ def calculate_stress(firsttimerange,lasttimerange,isweekend,city,country,state,p
 	pbimax = 25
 	paimin = 25
 	pbimin = 25
+
+	# Factor for limit
+	limitfactor = 2
 
 
 	# [max][min]
@@ -572,70 +578,69 @@ def calculate_stress(firsttimerange,lasttimerange,isweekend,city,country,state,p
 
 
 	if(isweekend):
-		level-=10 #Bonus for weekend
 		if(pnaccelerations>paw[0]):
-			level+=percentage_point_value(pnaccelerations,1,paw[0])*paimax
+			level+=percentage_point_value(pnaccelerations,paw[0]*limitfactor,paw[0])*paimax
 		if(pnaccelerations<paw[1]): 
-			level-=percentage_point_value(pnaccelerations,paw[1],0)*paimin
+			level-=percentage_point_value(pnaccelerations,paw[1],paw[1]/limitfactor)*paimin
 		if(pnbreaks>pbw[0]): 
-			level+=percentage_point_value(pnaccelerations,1,pbw[0])*pbimax
+			level+=percentage_point_value(pnaccelerations,pbw[0]*limitfactor,pbw[0])*pbimax
 		if(pnbreaks<pbw[1]): 
-			level-=percentage_point_value(pnaccelerations,pbw[1],0)*pbimin
+			level-=percentage_point_value(pnaccelerations,pbw[1],pbw[1]/limitfactor)*pbimin
 	else:
 		if(firsttimerange=="earlymorning"):
 			if(pnaccelerations>palem[0]): 
-				level+=percentage_point_value(pnaccelerations,1,palem[0])*paimax
+				level+=percentage_point_value(pnaccelerations,palem[0]*limitfactor,palem[0])*paimax
 			if(pnaccelerations<palem[1]):
-				level-=percentage_point_value(pnaccelerations,palem[1],0)*paimin
+				level-=percentage_point_value(pnaccelerations,palem[1],palem[1]/limitfactor)*paimin
 			if(pnbreaks>pblem[0]): 
-				level+=percentage_point_value(pnaccelerations,1,pblem[0])*pbimax
+				level+=percentage_point_value(pnaccelerations,pblem[0]*limitfactor,pblem[0])*pbimax
 			if(pnbreaks<pblem[1]): 
-				level-=percentage_point_value(pnaccelerations,pblem[1],0)*pbimin
+				level-=percentage_point_value(pnaccelerations,pblem[1],pblem[1]/limitfactor)*pbimin
 		elif(firsttimerange=="morning"):
 			if(pnaccelerations>palm[0]): 
-				level+=percentage_point_value(pnaccelerations,1,palm[0])*paimax
+				level+=percentage_point_value(pnaccelerations,palm[0]*limitfactor,palm[0])*paimax
 			if(pnaccelerations<palm[1]): 
-				level-=percentage_point_value(pnaccelerations,palm[1],0)*paimin
+				level-=percentage_point_value(pnaccelerations,palm[1],palm[1]/limitfactor)*paimin
 			if(pnbreaks>pblm[0]): 
-				level+=percentage_point_value(pnaccelerations,1,pblm[0])*pbimax
+				level+=percentage_point_value(pnaccelerations,pblm[0]*limitfactor,pblm[0])*pbimax
 			if(pnbreaks<pblm[1]): 
-				level-=percentage_point_value(pnaccelerations,pblm[1],0)*pbimin
+				level-=percentage_point_value(pnaccelerations,pblm[1],pblm[1]/limitfactor)*pbimin
 		elif(firsttimerange=="earlyafternoon"):
 			if(pnaccelerations>palea[0]): 
-				level+=percentage_point_value(pnaccelerations,1,palea[0])*paimax
+				level+=percentage_point_value(pnaccelerations,palea[0]*limitfactor,palea[0])*paimax
 			if(pnaccelerations<palea[1]): 
-				level-=percentage_point_value(pnaccelerations,palea[1],0)*paimin 
+				level-=percentage_point_value(pnaccelerations,palea[1],palea[1]/limitfactor)*paimin 
 			if(pnbreaks>pblea[0]): 
-				level+=percentage_point_value(pnaccelerations,1,pblea[0])*pbimax
+				level+=percentage_point_value(pnaccelerations,palea[0]*limitfactor,pblea[0])*pbimax
 			if(pnbreaks<pblea[1]): 
-				level-=percentage_point_value(pnaccelerations,pblea[1],0)*pbimin
+				level-=percentage_point_value(pnaccelerations,pblea[1],pblea[1]/limitfactor)*pbimin
 		elif(firsttimerange=="afternoon"):
 			if(pnaccelerations>pala[0]): 
-				level+=percentage_point_value(pnaccelerations,1,pala[0])*paimax
+				level+=percentage_point_value(pnaccelerations,pala[0]*limitfactor,pala[0])*paimax
 			if(pnaccelerations<pala[1]): 
-				level-=percentage_point_value(pnaccelerations,pala[1],0)*paimin 
+				level-=percentage_point_value(pnaccelerations,pala[1],pala[1]/limitfactor)*paimin 
 			if(pnbreaks>pbla[0]): 
-				level+=percentage_point_value(pnaccelerations,1,pbla[0])*pbimax
+				level+=percentage_point_value(pnaccelerations,pbla[0]*limitfactor,pbla[0])*pbimax
 			if(pnbreaks<pbla[1]): 
-				level-=percentage_point_value(pnaccelerations,pbla[1],0)*pbimin
+				level-=percentage_point_value(pnaccelerations,pbla[1],pbla[1]/limitfactor)*pbimin
 		elif(firsttimerange=="night"):
 			if(pnaccelerations>paln[0]): 
-				level+=percentage_point_value(pnaccelerations,1,paln[0])*paimax
+				level+=percentage_point_value(pnaccelerations,paln[0]*limitfactor,paln[0])*paimax
 			if(pnaccelerations<paln[1]): 
-				level-=percentage_point_value(pnaccelerations,paln[1],0)*paimin  
+				level-=percentage_point_value(pnaccelerations,paln[1],paln[1]/limitfactor)*paimin  
 			if(pnbreaks>pbln[0]): 
-				level+=percentage_point_value(pnaccelerations,1,pbln[0])*pbimax
+				level+=percentage_point_value(pnaccelerations,pbln[0]*limitfactor,pbln[0])*pbimax
 			if(pnbreaks<pbln[1]): 
-				level-=percentage_point_value(pnaccelerations,pbln[1],0)*pbimin
+				level-=percentage_point_value(pnaccelerations,pbln[1],pbln[1]/limitfactor)*pbimin
 		elif(firsttimerange=="latenight"):
 			if(pnaccelerations>palln[0]): 
-				level+=percentage_point_value(pnaccelerations,1,palln[0])*paimax
+				level+=percentage_point_value(pnaccelerations,palln[0]*limitfactor,palln[0])*paimax
 			if(pnaccelerations<palln[1]): 
-				level-=percentage_point_value(pnaccelerations,palln[1],0)*paimin  
+				level-=percentage_point_value(pnaccelerations,palln[1],palln[1]/limitfactor)*paimin  
 			if(pnbreaks>pblln[0]): 
-				level+=percentage_point_value(pnaccelerations,1,pblln[0])*pbimax
+				level+=percentage_point_value(pnaccelerations,pblln[0]*limitfactor,pblln[0])*pbimax
 			if(pnaccelerations<pblln[1]): 
-				level-=percentage_point_value(pnaccelerations,pblln[1],0)*pbimin
+				level-=percentage_point_value(pnaccelerations,pblln[1],pblln[1]/limitfactor)*pbimin
 
 
 	if(level<33):
