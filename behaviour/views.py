@@ -932,7 +932,7 @@ def set_all_points_noused():
 
 # Updates the table with the values 
 def set_stress_by_country():
-	qs = Trips.objects.values('country','stresslevel').order_by().annotate(Count('stresslevel'))
+	qs = Trips.objects.values('country','stresslevel').exclude(country="Unknown").order_by().annotate(Count('stresslevel'))
 	
 	#Clean
 	StressCountry.objects.all().delete()
@@ -957,7 +957,7 @@ def set_stress_by_country():
 
 # Updates the table with the values 
 def set_stress_by_state():
-	qs = Trips.objects.values('state','stresslevel').order_by().annotate(Count('stresslevel'))
+	qs = Trips.objects.values('state','stresslevel').exclude(state="Unknown").order_by().annotate(Count('stresslevel'))
 	
 	#Clean
 	StressState.objects.all().delete()
@@ -982,7 +982,7 @@ def set_stress_by_state():
 
 # Updates the table with the values 
 def set_stress_by_city():
-	qs = Trips.objects.values('city','stresslevel').order_by().annotate(Count('stresslevel'))
+	qs = Trips.objects.values('city','stresslevel').exclude(city="Unknown").order_by().annotate(Count('stresslevel'))
 	
 	#Clean
 	StressCity.objects.all().delete()
@@ -1008,9 +1008,9 @@ def set_stress_by_city():
 
 #Returns [high][mid][low] stress counts for that country
 def get_stress_by_country():
-	lowqs = Trips.objects.filter(stresslevel=0).values_list('country').annotate(stresslevel=Count('stresslevel')).order_by('country')
-	midqs = Trips.objects.filter(stresslevel=50).values_list('country').annotate(stresslevel=Count('stresslevel')).order_by('country')
-	highqs = Trips.objects.filter(stresslevel=100).values_list('country').annotate(stresslevel=Count('stresslevel')).order_by('country')
+	lowqs = Trips.objects.filter(stresslevel=0).values_list('country').exclude(country="Unknown").annotate(stresslevel=Count('stresslevel')).order_by('country')
+	midqs = Trips.objects.filter(stresslevel=50).values_list('country').exclude(country="Unknown").annotate(stresslevel=Count('stresslevel')).order_by('country')
+	highqs = Trips.objects.filter(stresslevel=100).values_list('country').exclude(country="Unknown").annotate(stresslevel=Count('stresslevel')).order_by('country')
 	#print("High for "+ qs[0].country+": "+qs[0].high)
 	print("Low for "+ str(lowqs))
 	print("Mid for "+ str(midqs))
@@ -1035,4 +1035,4 @@ def get_stress_by_country():
 #         
 def get_stress_by_state():
 	
-	return StressState.objects.all.values_list('state','high','mid','low')
+	return StressState.objects.all.values_list('state','high','mid','low').exclude(state="Unknown")
