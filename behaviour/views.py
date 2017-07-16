@@ -228,6 +228,7 @@ def create_trips(request,pointsqs,gaptime,gapdistance):
 
 	ntrips = 0
 	insertedtrips = 0
+	maxdistance = 1000
 
 	trip = []
 	
@@ -250,7 +251,7 @@ def create_trips(request,pointsqs,gaptime,gapdistance):
 				distance = vincenty( (thispoint[3],thispoint[4]), (nextpoint[3],nextpoint[4]) ).meters
 
 				# If the time is close, is part of a trip
-				if (timedifference(nextdate,thisdate)<timedelta(seconds=gaptime) and thisdevice == nextdevice and distance <=gapdistance):
+				if ((nextdate-thisdate)<timedelta(seconds=gaptime) and thisdevice == nextdevice and distance <=gapdistance):
 
 					#print(thisdevice +" = "+nextdevice)
 					#List of points for trip [id][timestamp][device_id][latitud][longitude]
@@ -756,6 +757,7 @@ def save_trip(request,trip):
 	#Set minimuns, 
 	minpoints = 10 # greater than 2
 	mindistance = 100 # greater than 0, meters (tries to avoid circular trips)
+	maxdistance = 100000
 	minduration = 30 # greater than 0, seconds
 	
 	# Get the first and last points
@@ -785,7 +787,7 @@ def save_trip(request,trip):
 	if(npoints < minpoints):
 		print("ERROR: Points less than "+minpoints)
 		return 0
-	if(distance < mindistance):
+	if(distance < mindistance or distance > maxdistance):
 		print("ERROR: Distance is less than "+mindistance)
 		return 0
 	if(duration < minduration):
@@ -857,9 +859,11 @@ def save_trip(request,trip):
 	if (numberdayofweek == 6): dayofweek = "Sunday" ; isweekend = True
 
 	stresslevel = calculate_stress(firsttimerange,lasttimerange,isweekend,city,country,state,pnaccelerations,pnbreaks)
+	try:
+		print("Adding: "+ str(device_id) + " Points: ""A("+str(pnaccelerations) +") "+ "B("+str(pnbreaks) +") @ "+ city +" / " + state +"(" +country+")")
+	except:
+		print("Error Printing the name of the city...")
 
-	print("Adding: "+ str(device_id) + " Points: ""A("+str(pnaccelerations) +") "+ "B("+str(pnbreaks) +")")
-	
 	insert = Trips( username=username, device_id=device_id,
 		firsttimestamp=firsttimestamp, lasttimestamp=lasttimestamp, 
 		firsttimerange=firsttimerange, lasttimerange=lasttimerange,
